@@ -6,3 +6,4 @@ target_sources(Dragibus
 )
 
 add_subdirectory(core)
+add_subdirectory(render)
