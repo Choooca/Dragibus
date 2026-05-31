@@ -16,9 +16,11 @@ Application::~Application()
 
 void Application::Loop()
 {
-	CreateGraphicContext();
+	GraphicContext graphic_context = CreateGraphicContext();
 
 	while (!glfwWindowShouldClose(m_window->GetGLFWWindow())) {
 		glfwPollEvents();
 	}
+
+	DestroyGraphicContext(graphic_context);
 }
