@@ -6,11 +6,8 @@
 struct GraphicContext {
 	VkInstance m_instance;
 	VkDebugUtilsMessengerEXT m_debug_messenger;
-	VkPhysicalDevice m_physical_device;
-	VkDevice m_device;
-	VkSwapchainKHR m_swap_chain;
-	VkRenderPass m_render_pass;
+	VkSurfaceKHR m_surface;
 };
 
-GraphicContext CreateGraphicContext();
+GraphicContext CreateGraphicContext(GLFWwindow *window);
 void DestroyGraphicContext(const GraphicContext &ctx);

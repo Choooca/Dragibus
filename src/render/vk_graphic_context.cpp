@@ -2,8 +2,9 @@
 #include <stdexcept>
 #include <vector>
 
-#include <utils/debug_macro.h>
 #include <spdlog/spdlog.h>
+
+#include <utils/debug_macro.h>
 
 namespace {
 
@@ -79,9 +80,9 @@ namespace {
 
 #pragma endregion
 
-#pragma region Instance
+#pragma region Initialization
 
-	VkInstance CreateVkInstance(const std::vector<const char*> validation_layers, const std::vector<const char*> extensions, const VkDebugUtilsMessengerCreateInfoEXT &debug_info) {
+	VkInstance CreateInstance(const std::vector<const char*> validation_layers, const std::vector<const char*> extensions, const VkDebugUtilsMessengerCreateInfoEXT &debug_info) {
 
 		VkApplicationInfo app_info{};
 		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -116,7 +117,19 @@ namespace {
 		}
 
 		VkDebugUtilsMessengerEXT out;
-		func(instance, &debug_info, nullptr, &out);
+		if (func(instance, &debug_info, nullptr, &out) != VK_SUCCESS) {
+			THROW_RUNTIME_ERROR("Failed to create debug messenger.");
+		}
+		return out;
+	}
+
+	VkSurfaceKHR CreateSurface(const VkInstance &instance, GLFWwindow *window) {
+		
+		VkSurfaceKHR out;
+		if (glfwCreateWindowSurface(instance, window, nullptr, &out) != VK_SUCCESS) {
+			THROW_RUNTIME_ERROR("Failed to create surface.");
+		}
+
 		return out;
 	}
 
@@ -126,7 +139,7 @@ namespace {
 
 #pragma region Graphic Context
 
-GraphicContext CreateGraphicContext()
+GraphicContext CreateGraphicContext(GLFWwindow* window)
 {
 	//Layers
 	std::vector<const char*> validation_layers{
@@ -162,14 +175,17 @@ GraphicContext CreateGraphicContext()
 	debug_info.pUserData = nullptr;
 
 	GraphicContext out{};
-	out.m_instance = CreateVkInstance(validation_layers, extensions, debug_info);
+	out.m_instance = CreateInstance(validation_layers, extensions, debug_info);
 	out.m_debug_messenger = CreateDebugMessenger(out.m_instance, debug_info);
+	out.m_surface = CreateSurface(out.m_instance, window);
 
 	return out;
 }
 
 void DestroyGraphicContext(const GraphicContext& ctx)
 {
+	vkDestroySurfaceKHR(ctx.m_instance, ctx.m_surface, nullptr);
+
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(ctx.m_instance, "vkDestroyDebugUtilsMessengerEXT");
 	if (func != nullptr) {
 		func(ctx.m_instance, ctx.m_debug_messenger, nullptr);
