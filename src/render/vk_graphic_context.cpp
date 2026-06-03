@@ -80,6 +80,8 @@ namespace {
 		if (!indices.transfer_family.has_value()) {
 			indices.transfer_family = indices.graphics_family;
 		}
+
+		return indices;
 	}
 
 #pragma endregion
@@ -201,7 +203,7 @@ namespace {
 		VkPhysicalDevice out;
 		for (VkPhysicalDevice physical_device : physical_devices) {
 			
-			QueueFamilyIndices indices = FindQueueFamily(physical_device);
+			QueueFamilyIndices indices = FindQueueFamily(physical_device, surface);
 
 			uint32_t extension_count;
 			vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, nullptr);
