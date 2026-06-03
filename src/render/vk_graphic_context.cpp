@@ -347,6 +347,8 @@ GraphicContext CreateGraphicContext(GLFWwindow* window)
 
 void DestroyGraphicContext(const GraphicContext& ctx)
 {
+	vkDestroyDevice(ctx.m_device, nullptr);
+
 	vkDestroySurfaceKHR(ctx.m_instance, ctx.m_surface, nullptr);
 
 	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(ctx.m_instance, "vkDestroyDebugUtilsMessengerEXT");
