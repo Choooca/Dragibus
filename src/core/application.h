@@ -1,12 +1,10 @@
 #pragma once
-#include <memory>
 
 class Window;
 
 class Application {
 
 public:
-
 	Application();
 	~Application();
 
@@ -14,6 +12,5 @@ public:
 
 private:
 
-	std::unique_ptr<Window> m_window;
-	
+	Window *m_window;
 };

@@ -6,7 +6,7 @@
 
 Application::Application()
 {
-	m_window = std::make_unique<Window>();
+	m_window = new Window();
 }
 
 Application::~Application()
@@ -23,4 +23,5 @@ void Application::Loop()
 	}
 
 	DestroyGraphicContext(graphic_context);
+	delete m_window;
 }

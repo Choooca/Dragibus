@@ -1,12 +1,34 @@
 #include "vk_graphic_context.h"
+
 #include <stdexcept>
 #include <vector>
+#include <set>
 
 #include <spdlog/spdlog.h>
 
 #include <utils/debug_macro.h>
 
 namespace {
+
+#pragma region Types
+
+	struct QueueFamilyIndices {
+		std::optional<uint32_t> graphics_family;
+		std::optional<uint32_t> present_family;
+		std::optional<uint32_t> transfer_family;
+
+		bool IsComplete() {
+			return graphics_family.has_value() && present_family.has_value();
+		}
+	};
+
+	struct SwapChainSupportDetails {
+		VkSurfaceCapabilitiesKHR capabilities;
+		std::vector<VkSurfaceFormatKHR> formats;
+		std::vector<VkPresentModeKHR> present_modes;
+	};
+
+#pragma endregion 
 
 #pragma region Callback
 
@@ -133,6 +155,93 @@ namespace {
 		return out;
 	}
 
+	VkPhysicalDevice PickPhysicalDevice(const VkInstance &instance, const VkSurfaceKHR &surface, const std::vector<const char*> device_extensions) {
+		uint32_t device_count = 0;
+		vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
+
+		if (device_count == 0) {
+			THROW_RUNTIME_ERROR("No device found");
+		}
+
+		std::vector<VkPhysicalDevice> physical_devices(device_count);
+		vkEnumeratePhysicalDevices(instance, &device_count, physical_devices.data());
+
+		VkPhysicalDevice out;
+		for (VkPhysicalDevice physical_device : physical_devices) {
+			
+			uint32_t queue_family_count;
+			vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
+
+			std::vector<VkQueueFamilyProperties> queue_families_properties(queue_family_count);
+			vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_properties.data());
+
+			QueueFamilyIndices indices;
+			for (size_t i = 0; i < queue_family_count; ++i) {
+				VkQueueFamilyProperties queue_family_properties = queue_families_properties[i];
+
+				if (queue_family_properties.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+					indices.graphics_family = i;
+				}
+
+				if (queue_family_properties.queueFlags & VK_QUEUE_TRANSFER_BIT && !(queue_family_properties.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+					indices.transfer_family = i;
+				}
+
+				VkBool32 support_surface = false;
+				vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, i, surface, &support_surface);
+
+				if (support_surface) {
+					indices.present_family = i;
+				}
+			}
+
+			if (!indices.transfer_family.has_value()) {
+				indices.transfer_family = indices.graphics_family;
+			}
+
+			uint32_t extension_count;
+			vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, nullptr);
+
+			std::vector<VkExtensionProperties> available_extensions(extension_count);
+			vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, available_extensions.data());
+
+			std::set<std::string> required_extensions(device_extensions.begin(), device_extensions.end());
+			for (const VkExtensionProperties &available_extension : available_extensions) {
+				required_extensions.erase(available_extension.extensionName);
+			}
+
+			bool extensions_supported = required_extensions.empty();
+
+			SwapChainSupportDetails swap_chain_support_details;
+			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &swap_chain_support_details.capabilities);
+
+			uint32_t format_count = 0;
+			vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
+			swap_chain_support_details.formats.resize(format_count);
+			vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, swap_chain_support_details.formats.data());
+
+			uint32_t present_mode_count = 0;
+			vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr);
+			swap_chain_support_details.present_modes.resize(present_mode_count);
+			vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, swap_chain_support_details.present_modes.data());
+
+			bool swap_chain_adequate = false;
+			if (extensions_supported) {
+				swap_chain_adequate = !swap_chain_support_details.formats.empty() && !swap_chain_support_details.present_modes.empty();
+			}
+
+			VkPhysicalDeviceFeatures supported_features;
+			vkGetPhysicalDeviceFeatures(physical_device, &supported_features);
+
+			if (indices.IsComplete() && extensions_supported && swap_chain_adequate && supported_features.samplerAnisotropy) {
+				return physical_device;
+			}
+
+		}
+
+		THROW_RUNTIME_ERROR("Failed to find suitable physical device");
+	}
+
 #pragma endregion 
 
 }
@@ -174,10 +283,12 @@ GraphicContext CreateGraphicContext(GLFWwindow* window)
 	debug_info.pfnUserCallback = DebugCallback;
 	debug_info.pUserData = nullptr;
 
+	//Graphic Context
 	GraphicContext out{};
 	out.m_instance = CreateInstance(validation_layers, extensions, debug_info);
 	out.m_debug_messenger = CreateDebugMessenger(out.m_instance, debug_info);
 	out.m_surface = CreateSurface(out.m_instance, window);
+	out.m_physical_device = PickPhysicalDevice(out.m_instance, out.m_surface, { VK_KHR_SWAPCHAIN_EXTENSION_NAME });
 
 	return out;
 }
