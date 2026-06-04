@@ -1,4 +1,4 @@
-#include "vk_graphic_context.h"
+#include "vk_context.h"
 
 #include <stdexcept>
 #include <vector>
@@ -7,28 +7,9 @@
 #include <spdlog/spdlog.h>
 
 #include <utils/debug_macro.h>
+#include <render/vk_utils.h>
 
 namespace {
-
-#pragma region Types
-
-	struct QueueFamilyIndices {
-		std::optional<uint32_t> graphics_family;
-		std::optional<uint32_t> present_family;
-		std::optional<uint32_t> transfer_family;
-
-		bool IsComplete() {
-			return graphics_family.has_value() && present_family.has_value();
-		}
-	};
-
-	struct SwapChainSupportDetails {
-		VkSurfaceCapabilitiesKHR capabilities;
-		std::vector<VkSurfaceFormatKHR> formats;
-		std::vector<VkPresentModeKHR> present_modes;
-	};
-
-#pragma endregion 
 
 #pragma region Utils
 
@@ -189,7 +170,7 @@ namespace {
 		return out;
 	}
 
-	VkPhysicalDevice PickPhysicalDevice(const VkInstance &instance, const VkSurfaceKHR &surface, const std::vector<const char*> device_extensions) {
+	VkPhysicalDevice PickPhysicalDevice(const VkInstance &instance, const VkSurfaceKHR &surface, const std::vector<const char*> device_extensions, QueueFamilyIndices &indices) {
 		uint32_t device_count = 0;
 		vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
 
@@ -200,10 +181,12 @@ namespace {
 		std::vector<VkPhysicalDevice> physical_devices(device_count);
 		vkEnumeratePhysicalDevices(instance, &device_count, physical_devices.data());
 
+		indices = {};
 		VkPhysicalDevice out;
+
 		for (VkPhysicalDevice physical_device : physical_devices) {
 			
-			QueueFamilyIndices indices = FindQueueFamily(physical_device, surface);
+			indices = FindQueueFamily(physical_device, surface);
 
 			uint32_t extension_count;
 			vkEnumerateDeviceExtensionProperties(physical_device, nullptr, &extension_count, nullptr);
@@ -218,18 +201,7 @@ namespace {
 
 			bool extensions_supported = required_extensions.empty();
 
-			SwapChainSupportDetails swap_chain_support_details;
-			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface, &swap_chain_support_details.capabilities);
-
-			uint32_t format_count = 0;
-			vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, nullptr);
-			swap_chain_support_details.formats.resize(format_count);
-			vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, swap_chain_support_details.formats.data());
-
-			uint32_t present_mode_count = 0;
-			vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, nullptr);
-			swap_chain_support_details.present_modes.resize(present_mode_count);
-			vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &present_mode_count, swap_chain_support_details.present_modes.data());
+			SwapChainSupportDetails swap_chain_support_details = GetSwapChainSupportDetails(physical_device, surface);
 
 			bool swap_chain_adequate = false;
 			if (extensions_supported) {
@@ -293,7 +265,7 @@ namespace {
 
 #pragma region Graphic Context
 
-GraphicContext CreateGraphicContext(GLFWwindow* window)
+VkContext CreateContext(GLFWwindow* window)
 {
 	//Layers
 	std::vector<const char*> validation_layers{
@@ -330,24 +302,23 @@ GraphicContext CreateGraphicContext(GLFWwindow* window)
 	debug_info.pUserData = nullptr;
 
 	//Graphic Context
-	GraphicContext out{};
+	VkContext out{};
+	out.m_window = window;
+
 	out.m_instance = CreateInstance(validation_layers, extensions, debug_info);
 	out.m_debug_messenger = CreateDebugMessenger(out.m_instance, debug_info);
-	out.m_surface = CreateSurface(out.m_instance, window);
-	out.m_physical_device = PickPhysicalDevice(out.m_instance, out.m_surface, device_extensions);
+	out.m_surface = CreateSurface(out.m_instance, out.m_window);
+	out.m_physical_device = PickPhysicalDevice(out.m_instance, out.m_surface, device_extensions, out.m_indices);
+	out.m_device = CreateLogicalDevice(out.m_physical_device, out.m_indices, device_extensions, validation_layers);
 	
-	QueueFamilyIndices indices = FindQueueFamily(out.m_physical_device, out.m_surface);
-	
-	out.m_device = CreateLogicalDevice(out.m_physical_device, indices, device_extensions, validation_layers);
-	
-	vkGetDeviceQueue(out.m_device, indices.graphics_family.value(), 0, &out.m_graphics_queue);
-	vkGetDeviceQueue(out.m_device, indices.present_family.value(), 0, &out.m_present_queue);
-	vkGetDeviceQueue(out.m_device, indices.transfer_family.value(), 0, &out.m_transfer_queue);
+	vkGetDeviceQueue(out.m_device, out.m_indices.graphics_family.value(), 0, &out.m_graphics_queue);
+	vkGetDeviceQueue(out.m_device, out.m_indices.present_family.value(), 0, &out.m_present_queue);
+	vkGetDeviceQueue(out.m_device, out.m_indices.transfer_family.value(), 0, &out.m_transfer_queue);
 
 	return out;
 }
 
-void DestroyGraphicContext(const GraphicContext& ctx)
+void DestroyContext(const VkContext& ctx)
 {
 	vkDestroyDevice(ctx.m_device, nullptr);
 

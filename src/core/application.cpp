@@ -1,8 +1,10 @@
 #include "application.h"
 #include <iostream>
-#include <render/window.h>
 #include <GLFW/glfw3.h>
-#include <render/vk_graphic_context.h>
+
+#include <render/window.h>
+#include <render/vk_context.h>
+#include <render/vk_render_context.h>
 
 Application::Application()
 {
@@ -16,12 +18,14 @@ Application::~Application()
 
 void Application::Loop()
 {
-	GraphicContext graphic_context = CreateGraphicContext(m_window->GetGLFWWindow());
+	VkContext context = CreateContext(m_window->GetGLFWWindow());
+	VkRenderContext render_context = CreateRenderContext(context);
 
 	while (!glfwWindowShouldClose(m_window->GetGLFWWindow())) {
 		glfwPollEvents();
 	}
 
-	DestroyGraphicContext(graphic_context);
+	DestroyRenderContext(context, render_context);
+	DestroyContext(context);
 	delete m_window;
 }
