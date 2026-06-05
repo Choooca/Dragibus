@@ -8,12 +8,11 @@
 
 namespace {
 
-#pragma region Initialization
+#pragma region Swap Chain
 
-	VkSwapchainKHR CreateSwapChain(const VkContext& ctx) {
-		SwapChainSupportDetails swap_chain_support_details = GetSwapChainSupportDetails(ctx.m_physical_device, ctx.m_surface);
+	VkSurfaceFormatKHR ChooseSwapChainImageFormat(const VkContext& ctx, const SwapChainSupportDetails &swap_chain_support_details) {
 
-		const std::vector<VkSurfaceFormatKHR> &available_formats = swap_chain_support_details.formats;
+		const std::vector<VkSurfaceFormatKHR>& available_formats = swap_chain_support_details.formats;
 
 		VkSurfaceFormatKHR image_format = available_formats[0];
 		for (size_t i = 1; i < available_formats.size(); ++i) {
@@ -24,6 +23,11 @@ namespace {
 			}
 		}
 
+		return image_format;
+	}
+
+	VkPresentModeKHR ChooseSwapChainPresentMode(const VkContext& ctx, const SwapChainSupportDetails& swap_chain_support_details) {
+
 		const std::vector<VkPresentModeKHR>& available_present_modes = swap_chain_support_details.present_modes;
 
 		VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
@@ -32,6 +36,11 @@ namespace {
 				present_mode = available_present_mode;
 			}
 		}
+
+		return present_mode;
+	}
+
+	VkSwapchainKHR CreateSwapChain(const VkContext& ctx, const VkRenderContext &render_ctx, const SwapChainSupportDetails& swap_chain_support_details) {
 
 		VkExtent2D image_extent;
 		const VkSurfaceCapabilitiesKHR& capabilities = swap_chain_support_details.capabilities;
@@ -61,12 +70,12 @@ namespace {
 		swap_chain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 		swap_chain_info.surface = ctx.m_surface;
 		swap_chain_info.minImageCount = image_count;
-		swap_chain_info.imageFormat = image_format.format;
-		swap_chain_info.imageColorSpace = image_format.colorSpace;
+		swap_chain_info.imageFormat = render_ctx.m_swap_chain_image_format.format;
+		swap_chain_info.imageColorSpace = render_ctx.m_swap_chain_image_format.colorSpace;
 		swap_chain_info.imageExtent = image_extent;
 		swap_chain_info.imageArrayLayers = 1;
 		swap_chain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		swap_chain_info.presentMode = present_mode;
+		swap_chain_info.presentMode = render_ctx.m_swap_chain_present_mode;
 
 		uint32_t queue_family_indices[] = {ctx.m_indices.graphics_family.value(), ctx.m_indices.present_family.value()};
 
@@ -91,6 +100,44 @@ namespace {
 		return out;
 	}
 
+	std::vector<VkImage> RetrieveSwapChainImage(const VkContext &ctx, const VkRenderContext &render_ctx) {
+		
+		uint32_t swap_chain_image_count; 
+		vkGetSwapchainImagesKHR(ctx.m_device, render_ctx.m_swap_chain, &swap_chain_image_count, nullptr);
+
+		std::vector<VkImage> swap_chain_images(swap_chain_image_count);
+		vkGetSwapchainImagesKHR(ctx.m_device, render_ctx.m_swap_chain, &swap_chain_image_count, swap_chain_images.data());
+
+		return swap_chain_images;
+
+	}
+
+#pragma endregion
+
+#pragma region Resources
+
+	VkImageView CreateImageView(const VkContext &ctx, const VkImage& image, const VkFormat format, VkImageAspectFlags aspect_flags) {
+
+		VkImageViewCreateInfo image_view_create_info{};
+		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		image_view_create_info.image = image;
+		image_view_create_info.format = format;
+		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+
+		image_view_create_info.subresourceRange.aspectMask = aspect_flags;
+		image_view_create_info.subresourceRange.layerCount = 1;
+		image_view_create_info.subresourceRange.baseArrayLayer = 0;
+		image_view_create_info.subresourceRange.levelCount = 1;
+		image_view_create_info.subresourceRange.baseMipLevel = 0;
+
+		VkImageView out;
+		if (vkCreateImageView(ctx.m_device, &image_view_create_info, nullptr, &out) != VK_SUCCESS) {
+			THROW_RUNTIME_ERROR("Failed to create Image View");
+		}
+
+		return out;
+	}
+
 #pragma endregion
 
 #pragma region Destruction
@@ -109,7 +156,12 @@ VkRenderContext CreateRenderContext(const VkContext& ctx)
 {
 	VkRenderContext out;
 
-	out.m_swap_chain = CreateSwapChain(ctx);
+	SwapChainSupportDetails swap_chain_support_details = GetSwapChainSupportDetails(ctx.m_physical_device, ctx.m_surface);
+
+	out.m_swap_chain_image_format = ChooseSwapChainImageFormat(ctx, swap_chain_support_details);
+	out.m_swap_chain_present_mode = ChooseSwapChainPresentMode(ctx, swap_chain_support_details);
+	out.m_swap_chain = CreateSwapChain(ctx, out, swap_chain_support_details);
+	out.m_swap_chain_images = RetrieveSwapChainImage(ctx, out);
 
 	return out;
 }

@@ -13,7 +13,7 @@ Application::Application()
 
 Application::~Application()
 {
-	
+	delete m_window;
 }
 
 void Application::Loop()
@@ -27,5 +27,4 @@ void Application::Loop()
 
 	DestroyRenderContext(context, render_context);
 	DestroyContext(context);
-	delete m_window;
 }
