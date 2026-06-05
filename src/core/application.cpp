@@ -25,6 +25,6 @@ void Application::Loop()
 		glfwPollEvents();
 	}
 
-	DestroyRenderContext(context, render_context);
+	DestroyRenderContext(render_context);
 	DestroyContext(context);
 }

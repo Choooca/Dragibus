@@ -15,7 +15,9 @@ struct VkRenderContext {
 	VkSwapchainKHR m_swap_chain;
 	std::vector<VkImage> m_swap_chain_images;
 	std::vector<VkImageView> m_swap_chain_image_views;
+
+	VkRenderPass m_render_pass;
 };
 
 VkRenderContext CreateRenderContext(VkContext &ctx);
-void DestroyRenderContext(const VkContext &ctx, const VkRenderContext& render_ctx);
+void DestroyRenderContext(const VkRenderContext& render_ctx);
