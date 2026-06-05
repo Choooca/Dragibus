@@ -2,11 +2,36 @@
 
 #include <algorithm>
 
-#include <render/vk_context.h>
 #include <render/vk_utils.h>
 #include <utils/debug_macro.h>
 
 namespace {
+
+#pragma region Resources
+
+	VkImageView CreateImageView(const VkContext& ctx, const VkImage& image, const VkFormat format, VkImageAspectFlags aspect_flags) {
+
+		VkImageViewCreateInfo image_view_create_info{};
+		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		image_view_create_info.image = image;
+		image_view_create_info.format = format;
+		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+
+		image_view_create_info.subresourceRange.aspectMask = aspect_flags;
+		image_view_create_info.subresourceRange.layerCount = 1;
+		image_view_create_info.subresourceRange.baseArrayLayer = 0;
+		image_view_create_info.subresourceRange.levelCount = 1;
+		image_view_create_info.subresourceRange.baseMipLevel = 0;
+
+		VkImageView out;
+		if (vkCreateImageView(ctx.m_device, &image_view_create_info, nullptr, &out) != VK_SUCCESS) {
+			THROW_RUNTIME_ERROR("Failed to create Image View");
+		}
+
+		return out;
+	}
+
+#pragma endregion
 
 #pragma region Swap Chain
 
@@ -126,37 +151,11 @@ namespace {
 
 #pragma endregion
 
-#pragma region Resources
-
-	VkImageView CreateImageView(const VkContext &ctx, const VkImage& image, const VkFormat format, VkImageAspectFlags aspect_flags) {
-
-		VkImageViewCreateInfo image_view_create_info{};
-		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		image_view_create_info.image = image;
-		image_view_create_info.format = format;
-		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-
-		image_view_create_info.subresourceRange.aspectMask = aspect_flags;
-		image_view_create_info.subresourceRange.layerCount = 1;
-		image_view_create_info.subresourceRange.baseArrayLayer = 0;
-		image_view_create_info.subresourceRange.levelCount = 1;
-		image_view_create_info.subresourceRange.baseMipLevel = 0;
-
-		VkImageView out;
-		if (vkCreateImageView(ctx.m_device, &image_view_create_info, nullptr, &out) != VK_SUCCESS) {
-			THROW_RUNTIME_ERROR("Failed to create Image View");
-		}
-
-		return out;
-	}
-
-#pragma endregion
-
 #pragma region Destruction
 
 	void DestroySwapChain(const VkRenderContext &render_ctx, const VkSwapchainKHR &swap_chain) {
 		for (const VkImageView& image_view : render_ctx.m_swap_chain_image_views) {
-			vkDestroyImageView(render_ctx.m_vk_context, image_view, nullptr);
+			vkDestroyImageView(render_ctx.m_vk_context.m_device, image_view, nullptr);
 		}
 
 		vkDestroySwapchainKHR(render_ctx.m_vk_context.m_device, swap_chain, nullptr);

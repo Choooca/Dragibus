@@ -4,6 +4,8 @@
 
 #include <glfw/glfw3.h>
 
+#include <render/vk_context.h>
+
 struct VkContext;
 
 struct VkRenderContext {
