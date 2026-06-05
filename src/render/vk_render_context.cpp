@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include <render/vk_context.h>
 #include <render/vk_utils.h>
 #include <utils/debug_macro.h>
 
@@ -75,7 +76,7 @@ namespace {
 		}
 		else {
 			int width, height;
-			glfwGetFramebufferSize(render_ctx.m_vk_context.m_window, &width, &height);
+			glfwGetFramebufferSize(render_ctx.m_vk_context->m_window, &width, &height);
 
 			image_extent = {
 				static_cast<uint32_t>(width),
@@ -93,7 +94,7 @@ namespace {
 
 		VkSwapchainCreateInfoKHR swap_chain_info{};
 		swap_chain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-		swap_chain_info.surface = render_ctx.m_vk_context.m_surface;
+		swap_chain_info.surface = render_ctx.m_vk_context->m_surface;
 		swap_chain_info.minImageCount = image_count;
 		swap_chain_info.imageFormat = render_ctx.m_swap_chain_image_format.format;
 		swap_chain_info.imageColorSpace = render_ctx.m_swap_chain_image_format.colorSpace;
@@ -102,9 +103,9 @@ namespace {
 		swap_chain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		swap_chain_info.presentMode = render_ctx.m_swap_chain_present_mode;
 
-		uint32_t queue_family_indices[] = { render_ctx.m_vk_context.m_indices.graphics_family.value(), render_ctx.m_vk_context.m_indices.present_family.value()};
+		uint32_t queue_family_indices[] = { render_ctx.m_vk_context->m_indices.graphics_family.value(), render_ctx.m_vk_context->m_indices.present_family.value()};
 
-		if (render_ctx.m_vk_context.m_indices.graphics_family.value() != render_ctx.m_vk_context.m_indices.present_family.value()) {
+		if (render_ctx.m_vk_context->m_indices.graphics_family.value() != render_ctx.m_vk_context->m_indices.present_family.value()) {
 			swap_chain_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 			swap_chain_info.queueFamilyIndexCount = 2;
 			swap_chain_info.pQueueFamilyIndices = queue_family_indices;
@@ -118,7 +119,7 @@ namespace {
 		swap_chain_info.clipped = VK_TRUE;
 
 		VkSwapchainKHR out;
-		if (vkCreateSwapchainKHR(render_ctx.m_vk_context.m_device, &swap_chain_info, nullptr, &out) != VK_SUCCESS) {
+		if (vkCreateSwapchainKHR(render_ctx.m_vk_context->m_device, &swap_chain_info, nullptr, &out) != VK_SUCCESS) {
 			THROW_RUNTIME_ERROR("Failed to create swap chain");
 		}
 
@@ -143,7 +144,7 @@ namespace {
 		std::vector<VkImageView> swap_chain_image_views(swap_chain_image_count);
 
 		for (size_t i = 0; i < swap_chain_image_count; ++i) {
-			swap_chain_image_views[i] = CreateImageView(render_context.m_vk_context, render_context.m_swap_chain_images[i], render_context.m_swap_chain_image_format.format, VK_IMAGE_ASPECT_COLOR_BIT);
+			swap_chain_image_views[i] = CreateImageView(*render_context.m_vk_context, render_context.m_swap_chain_images[i], render_context.m_swap_chain_image_format.format, VK_IMAGE_ASPECT_COLOR_BIT);
 		}
 
 		return swap_chain_image_views;
@@ -155,10 +156,10 @@ namespace {
 
 	void DestroySwapChain(const VkRenderContext &render_ctx, const VkSwapchainKHR &swap_chain) {
 		for (const VkImageView& image_view : render_ctx.m_swap_chain_image_views) {
-			vkDestroyImageView(render_ctx.m_vk_context.m_device, image_view, nullptr);
+			vkDestroyImageView(render_ctx.m_vk_context->m_device, image_view, nullptr);
 		}
 
-		vkDestroySwapchainKHR(render_ctx.m_vk_context.m_device, swap_chain, nullptr);
+		vkDestroySwapchainKHR(render_ctx.m_vk_context->m_device, swap_chain, nullptr);
 	}
 
 #pragma endregion
@@ -167,13 +168,12 @@ namespace {
 
 #pragma region Render Context
 
-VkRenderContext CreateRenderContext(const VkContext& ctx)
+VkRenderContext CreateRenderContext(VkContext &ctx)
 {
 	VkRenderContext out;
+	out.m_vk_context = &ctx;
 
-	out.m_vk_context = ctx;
-
-	SwapChainSupportDetails swap_chain_support_details = GetSwapChainSupportDetails(out.m_vk_context.m_physical_device, out.m_vk_context.m_surface);
+	SwapChainSupportDetails swap_chain_support_details = GetSwapChainSupportDetails(out.m_vk_context->m_physical_device, out.m_vk_context->m_surface);
 
 	out.m_swap_chain_image_format = ChooseSwapChainImageFormat(swap_chain_support_details);
 	out.m_swap_chain_present_mode = ChooseSwapChainPresentMode(swap_chain_support_details);
@@ -184,7 +184,7 @@ VkRenderContext CreateRenderContext(const VkContext& ctx)
 	return out;
 }
 
-void DestroyRenderContext(const VkContext ctx, const VkRenderContext& render_ctx)
+void DestroyRenderContext(const VkContext &ctx, const VkRenderContext& render_ctx)
 {
 	DestroySwapChain(render_ctx, render_ctx.m_swap_chain);
 }

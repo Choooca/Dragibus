@@ -4,13 +4,11 @@
 
 #include <glfw/glfw3.h>
 
-#include <render/vk_context.h>
-
 struct VkContext;
 
 struct VkRenderContext {
 
-	VkContext m_vk_context;
+	VkContext *m_vk_context;
 
 	VkSurfaceFormatKHR m_swap_chain_image_format;
 	VkPresentModeKHR m_swap_chain_present_mode;
@@ -19,5 +17,5 @@ struct VkRenderContext {
 	std::vector<VkImageView> m_swap_chain_image_views;
 };
 
-VkRenderContext CreateRenderContext(const VkContext &ctx);
-void DestroyRenderContext(const VkContext ctx, const VkRenderContext& render_ctx);
+VkRenderContext CreateRenderContext(VkContext &ctx);
+void DestroyRenderContext(const VkContext &ctx, const VkRenderContext& render_ctx);
