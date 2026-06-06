@@ -1,0 +1,6 @@
+#pragma once
+
+static constexpr const char *PROJECT_SOURCE_DIR = "${CMAKE_SOURCE_DIR}/";
+static constexpr const char *SHADERS_DIR = "${CMAKE_SOURCE_DIR}/shaders/";
+static constexpr const char *TEXTURES_DIR = "${CMAKE_SOURCE_DIR}/resources/textures/";
+static constexpr const char *MODELS_DIR = "${CMAKE_SOURCE_DIR}/resources/models/";

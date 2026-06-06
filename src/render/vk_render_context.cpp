@@ -6,6 +6,8 @@
 #include <render/vk_context.h>
 #include <render/vk_utils.h>
 #include <utils/debug_macro.h>
+#include <utils/files.h>
+#include <utils/build_macro.h>
 
 namespace {
 
@@ -203,6 +205,49 @@ namespace {
 	}
 
 #pragma endregion 
+
+#pragma region Graphics Pipeline
+
+	VkDescriptorSetLayout CreateDescriptorSetLayout(VkRenderContext *render_context) {
+		VkDescriptorSetLayoutBinding ubo_layout_binding{};
+		ubo_layout_binding.binding = 0;
+		ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		ubo_layout_binding.descriptorCount = 1;
+		ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		ubo_layout_binding.pImmutableSamplers = nullptr;
+
+		std::array<VkDescriptorSetLayoutBinding, 1> bindings = { ubo_layout_binding };
+		VkDescriptorSetLayoutCreateInfo layout_info{};
+		layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layout_info.bindingCount = bindings.size();
+		layout_info.pBindings = bindings.data();
+
+		VkDescriptorSetLayout out;
+		if (vkCreateDescriptorSetLayout(render_context->m_vk_context->m_device, &layout_info, nullptr, &out) != VK_SUCCESS) {
+			THROW_RUNTIME_ERROR("Failed to create Descriptor Set Layout");
+		}
+
+		return out;
+	}
+
+	VkShaderModule CreateShaderModule(const VkRenderContext& render_context, const std::string& shader_file_name) {
+
+		std::vector<char> shader_code = ReadFile(std::string(SHADERS_DIR) + shader_file_name);
+
+		VkShaderModuleCreateInfo module_info{};
+		module_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		module_info.codeSize = shader_code.size();
+		module_info.pCode = reinterpret_cast<const uint32_t *>(shader_code.data());
+
+		VkShaderModule out;
+		if (vkCreateShaderModule(render_context.m_vk_context->m_device, &module_info, nullptr, &out) != VK_SUCCESS) {
+			THROW_RUNTIME_ERROR("Failed to create shader module " + shader_file_name);
+		}
+
+		return out;
+	}
+
+#pragma endregion
 
 #pragma region Destruction
 
