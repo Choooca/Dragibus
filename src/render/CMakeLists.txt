@@ -6,4 +6,5 @@ target_sources(Dragibus
 		vk_context.cpp
 		vk_render_context.cpp
 		vk_utils.cpp
+		primitives.h
 )
