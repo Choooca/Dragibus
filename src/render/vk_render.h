@@ -43,13 +43,14 @@ private:
 	VkCommandBuffer BeginSingleCommandBuffer(const VkCommandPool &command_pool);
 	void EndSingleCommandBuffer(const VkCommandBuffer& command_buffer, const VkCommandPool& command_pool, const VkQueue &queue);
 
-	//Primitives Buffers 
+	//Uniform Buffers
 	std::vector<VkBuffer> m_uniform_buffers;
 	std::vector<VkDeviceMemory> m_uniform_buffers_memory;
 	std::vector<void*> m_uniform_buffers_mapped_memory;
 
 	void CreateUniformBuffer(std::vector<VkBuffer>& buffers, std::vector<VkDeviceMemory> &device_memory, std::vector<void*> &mapped_memory);
-
+	
+	//Primitives Buffers 
 	template<typename T>
 	void CreatePrimitiveBuffer(std::vector<T> primitive_data, VkBuffer& buffer, VkDeviceMemory& device_memory, VkBufferUsageFlags buffer_usage) {
 		
@@ -75,13 +76,20 @@ private:
 	VkBuffer m_vertex_buffers;
 	VkDeviceMemory m_vertex_buffers_memory;
 
-	void CreateVertexBuffer(std::vector<VkBuffer>& buffers, std::vector<VkDeviceMemory>& device_memory, std::vector<void*>& mapped_memory);
-
 	//Descriptors
 	VkDescriptorPool m_descriptor_pool;
 	std::vector<VkDescriptorSet> m_descriptor_sets;
 
 	VkDescriptorPool CreateDescriptorPool();
 	std::vector<VkDescriptorSet> CreateDescriptorSets(const std::vector<VkBuffer> &uniform_buffers);
+
+	//Synchronisation
+
+	std::vector<VkSemaphore> m_image_available_semaphore;
+	std::vector<VkSemaphore> m_render_finish_semaphore;
+	std::vector<VkFence> m_in_flight_fence;
+
+	std::vector<VkSemaphore> CreateSemaphore(uint32_t count, VkSemaphoreCreateFlags flags = 0);
+	std::vector<VkFence> CreateFence(uint32_t count, VkFenceCreateFlags flags = 0);
 };
 

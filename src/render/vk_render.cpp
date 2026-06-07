@@ -24,10 +24,23 @@ VkRender::VkRender(VkRenderContext* render_context) : m_render_context(render_co
 	m_transfer_command_pool = CreateCommandPool(m_render_context->m_vk_context->m_indices.transfer_family.value(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 	m_graphics_command_buffer = CreateCommandBuffer(m_graphics_command_pool, MAX_FRAMES_IN_FLIGHT);
 	CreatePrimitiveBuffer<Vertex>(vertices, m_vertex_buffers, m_vertex_buffers_memory, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+
+	m_image_available_semaphore = CreateSemaphore(MAX_FRAMES_IN_FLIGHT);
+	m_render_finish_semaphore = CreateSemaphore(m_render_context->m_swap_chain_images.size());
+	m_in_flight_fence = CreateFence(MAX_FRAMES_IN_FLIGHT, VK_FENCE_CREATE_SIGNALED_BIT);
 }
 
 VkRender::~VkRender()
 {
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+		vkDestroySemaphore(m_render_context->m_vk_context->m_device, m_image_available_semaphore[i], nullptr);
+		vkDestroyFence(m_render_context->m_vk_context->m_device, m_in_flight_fence[i], nullptr);
+	}
+
+	for (size_t i = 0; i < m_render_context->m_swap_chain_images.size(); ++i) {
+		vkDestroySemaphore(m_render_context->m_vk_context->m_device, m_render_finish_semaphore[i], nullptr);
+	}
+
 	vkDestroyCommandPool(m_render_context->m_vk_context->m_device, m_graphics_command_pool, nullptr);
 	vkDestroyCommandPool(m_render_context->m_vk_context->m_device, m_transfer_command_pool, nullptr);
 
@@ -252,3 +265,39 @@ std::vector<VkDescriptorSet> VkRender::CreateDescriptorSets(const std::vector<Vk
 
 #pragma endregion
 
+#pragma region Synchronisation
+
+std::vector<VkSemaphore> VkRender::CreateSemaphore(uint32_t count, VkSemaphoreCreateFlags flags)
+{
+	VkSemaphoreCreateInfo semaphore_info{};
+	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphore_info.flags = flags;
+
+	std::vector<VkSemaphore> out(count);
+
+	for (size_t i = 0; i < count; ++i) {
+		if (vkCreateSemaphore(m_render_context->m_vk_context->m_device, &semaphore_info, nullptr, &out[i]) != VK_SUCCESS) {
+			THROW_RUNTIME_ERROR("Failed to create Semaphore.");
+		}
+	}
+
+	return out;
+}
+
+std::vector<VkFence> VkRender::CreateFence(uint32_t count, VkFenceCreateFlags flags)
+{
+	VkFenceCreateInfo fence_info{};
+	fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fence_info.flags = flags;
+	
+	std::vector<VkFence> out(count);
+	for (size_t i = 0; i < count; ++i) {
+		if (vkCreateFence(m_render_context->m_vk_context->m_device, &fence_info, nullptr, &out[i]) != VK_SUCCESS) {
+			THROW_RUNTIME_ERROR("Failed to create Fence.");
+		}
+	}
+
+	return out;
+}
+
+#pragma endregion
