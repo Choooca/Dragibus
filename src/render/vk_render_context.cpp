@@ -215,29 +215,7 @@ namespace {
 
 #pragma region Graphics Pipeline
 
-	VkDescriptorSetLayout CreateDescriptorSetLayout(const VkRenderContext &render_context) {
-		VkDescriptorSetLayoutBinding ubo_layout_binding{};
-		ubo_layout_binding.binding = 0;
-		ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		ubo_layout_binding.descriptorCount = 1;
-		ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-		ubo_layout_binding.pImmutableSamplers = nullptr;
-
-		std::array<VkDescriptorSetLayoutBinding, 1> bindings = { ubo_layout_binding };
-		VkDescriptorSetLayoutCreateInfo layout_info{};
-		layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layout_info.bindingCount = bindings.size();
-		layout_info.pBindings = bindings.data();
-
-		VkDescriptorSetLayout out;
-		if (vkCreateDescriptorSetLayout(render_context.m_vk_context->m_device, &layout_info, nullptr, &out) != VK_SUCCESS) {
-			THROW_RUNTIME_ERROR("Failed to create Descriptor Set Layout");
-		}
-
-		return out;
-	}
-
-	VkShaderModule CreateShaderModule(const VkRenderContext& render_context, const std::string& shader_file_name) {
+	VkShaderModule CreateShaderModule(const VkRenderContext &render_context, const std::string& shader_file_name) {
 
 		std::vector<char> shader_code = ReadFile(std::string(SHADERS_DIR) + shader_file_name);
 
@@ -409,15 +387,77 @@ namespace {
 	}
 
 #pragma endregion
+	
+#pragma region Framebuffer
+
+	std::vector<VkFramebuffer> CreateFramebuffer(const VkRenderContext &render_context) {
+		
+		size_t size = render_context.m_swap_chain_image_views.size();
+		std::vector<VkFramebuffer> framebuffers(size);
+
+		for (size_t i = 0; i < size; i++) {
+			std::array<VkImageView, 1> attachments{
+				render_context.m_swap_chain_image_views[i]
+			};
+
+			VkFramebufferCreateInfo framebuffer_info{};
+			framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebuffer_info.renderPass = render_context.m_render_pass;
+			framebuffer_info.attachmentCount = static_cast<uint32_t>(attachments.size());
+			framebuffer_info.pAttachments = attachments.data();
+			framebuffer_info.width = render_context.m_swap_chain_extent.width;
+			framebuffer_info.height = render_context.m_swap_chain_extent.height;
+			framebuffer_info.layers = 1;
+
+			if (vkCreateFramebuffer(render_context.m_vk_context->m_device, &framebuffer_info, nullptr, &framebuffers[i]) != VK_SUCCESS) {
+				THROW_RUNTIME_ERROR("Failed to create Framebuffer.");
+			}
+		}
+
+		return framebuffers;
+	}
+
+#pragma endregion
+
+#pragma region Descriptors
+
+	VkDescriptorSetLayout CreateDescriptorSetLayout(const VkRenderContext& render_context) {
+		VkDescriptorSetLayoutBinding ubo_layout_binding{};
+		ubo_layout_binding.binding = 0;
+		ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		ubo_layout_binding.descriptorCount = 1;
+		ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		ubo_layout_binding.pImmutableSamplers = nullptr;
+
+		std::array<VkDescriptorSetLayoutBinding, 1> bindings = { ubo_layout_binding };
+		VkDescriptorSetLayoutCreateInfo layout_info{};
+		layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layout_info.bindingCount = bindings.size();
+		layout_info.pBindings = bindings.data();
+
+		VkDescriptorSetLayout out;
+		if (vkCreateDescriptorSetLayout(render_context.m_vk_context->m_device, &layout_info, nullptr, &out) != VK_SUCCESS) {
+			THROW_RUNTIME_ERROR("Failed to create Descriptor Set Layout");
+		}
+
+		return out;
+	}
+
+#pragma endregion
 
 #pragma region Destruction
 
-	void DestroySwapChain(const VkRenderContext &render_ctx, const VkSwapchainKHR &swap_chain) {
+	void DestroySwapChain(const VkRenderContext &render_ctx) {
+		
+		for (VkFramebuffer framebuffer : render_ctx.m_framebuffer) {
+			vkDestroyFramebuffer(render_ctx.m_vk_context->m_device, framebuffer, nullptr);
+		}
+		
 		for (const VkImageView& image_view : render_ctx.m_swap_chain_image_views) {
 			vkDestroyImageView(render_ctx.m_vk_context->m_device, image_view, nullptr);
 		}
 
-		vkDestroySwapchainKHR(render_ctx.m_vk_context->m_device, swap_chain, nullptr);
+		vkDestroySwapchainKHR(render_ctx.m_vk_context->m_device, render_ctx.m_swap_chain, nullptr);
 	}
 
 #pragma endregion
@@ -443,6 +483,7 @@ VkRenderContext CreateRenderContext(VkContext &ctx)
 	out.m_descriptor_set_layout = CreateDescriptorSetLayout(out);
 	out.m_pipeline_layout = CreatePipelineLayout(out);
 	out.m_graphics_pipeline = CreateGraphicsPipeline(out, "simple_shader_vert.spv", "simple_shader_frag.spv");
+	out.m_framebuffer = CreateFramebuffer(out);
 
 	return out;
 }
@@ -453,7 +494,7 @@ void DestroyRenderContext(const VkRenderContext& render_ctx)
 	vkDestroyPipeline(render_ctx.m_vk_context->m_device, render_ctx.m_graphics_pipeline, nullptr);
 	vkDestroyPipelineLayout(render_ctx.m_vk_context->m_device, render_ctx.m_pipeline_layout, nullptr);
 	vkDestroyRenderPass(render_ctx.m_vk_context->m_device, render_ctx.m_render_pass, nullptr);
-	DestroySwapChain(render_ctx, render_ctx.m_swap_chain);
+	DestroySwapChain(render_ctx);
 }
 
 #pragma endregion

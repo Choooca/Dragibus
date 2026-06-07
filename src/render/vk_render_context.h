@@ -21,6 +21,9 @@ struct VkRenderContext {
 	VkDescriptorSetLayout m_descriptor_set_layout;
 	VkPipelineLayout m_pipeline_layout;
 	VkPipeline m_graphics_pipeline;
+
+	std::vector<VkFramebuffer> m_framebuffer;
+
 };
 
 VkRenderContext CreateRenderContext(VkContext &ctx);

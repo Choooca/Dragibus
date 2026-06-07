@@ -1,5 +1,8 @@
 #include "vk_utils.h"
 
+#include <render/vk_context.h>
+#include <utils/debug_macro.h>
+
 SwapChainSupportDetails GetSwapChainSupportDetails(const VkPhysicalDevice& physical_device, const VkSurfaceKHR& surface)
 {
 	SwapChainSupportDetails swap_chain_support_details;
