@@ -3,12 +3,18 @@
 #include <array>
 
 #include <render/vk_context.h>
-#include <render/vk_render_context.h>
 #include <utils/debug_macro.h>
+#include <render/primitives.h>
 
 #pragma region Constructors
 
 VkRender::VkRender(VkRenderContext* render_context) : m_render_context(render_context) {
+
+	std::vector<Vertex> vertices = {
+		{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+		{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+		{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	};
 
 	CreateUniformBuffer(m_uniform_buffers, m_uniform_buffers_memory, m_uniform_buffers_mapped_memory);
 
@@ -17,12 +23,16 @@ VkRender::VkRender(VkRenderContext* render_context) : m_render_context(render_co
 	m_graphics_command_pool = CreateCommandPool(m_render_context->m_vk_context->m_indices.graphics_family.value(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	m_transfer_command_pool = CreateCommandPool(m_render_context->m_vk_context->m_indices.transfer_family.value(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 	m_graphics_command_buffer = CreateCommandBuffer(m_graphics_command_pool, MAX_FRAMES_IN_FLIGHT);
+	CreatePrimitiveBuffer<Vertex>(vertices, m_vertex_buffers, m_vertex_buffers_memory, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 }
 
 VkRender::~VkRender()
 {
 	vkDestroyCommandPool(m_render_context->m_vk_context->m_device, m_graphics_command_pool, nullptr);
 	vkDestroyCommandPool(m_render_context->m_vk_context->m_device, m_transfer_command_pool, nullptr);
+
+	vkDestroyBuffer(m_render_context->m_vk_context->m_device, m_vertex_buffers, nullptr);
+	vkFreeMemory(m_render_context->m_vk_context->m_device, m_vertex_buffers_memory, nullptr);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
 		vkDestroyBuffer(m_render_context->m_vk_context->m_device, m_uniform_buffers[i], nullptr);
@@ -71,6 +81,19 @@ void VkRender::CreateBuffer(const VkDeviceSize& size, const VkBufferUsageFlags& 
 	}
 
 	vkBindBufferMemory(m_render_context->m_vk_context->m_device, buffer, buffer_memory, 0);
+}
+
+void VkRender::CopyBuffer(const VkBuffer& src_buffer, const VkBuffer& dst_buffer, VkDeviceSize size)
+{
+	VkCommandBuffer transfer_command_buffer = BeginSingleCommandBuffer(m_transfer_command_pool);
+
+	VkBufferCopy copy_region{};
+	copy_region.srcOffset = 0;
+	copy_region.dstOffset = 0;
+	copy_region.size = size;
+	vkCmdCopyBuffer(transfer_command_buffer, src_buffer, dst_buffer, 1, &copy_region);
+
+	EndSingleCommandBuffer(transfer_command_buffer, m_transfer_command_pool, m_render_context->m_vk_context->m_transfer_queue);
 }
 
 uint32_t VkRender::FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties)
@@ -138,6 +161,34 @@ std::vector<VkCommandBuffer> VkRender::CreateCommandBuffer(const VkCommandPool& 
 	}
 
 	return out;
+}
+
+VkCommandBuffer VkRender::BeginSingleCommandBuffer(const VkCommandPool& command_pool)
+{
+	VkCommandBuffer out = CreateCommandBuffer(command_pool, 1)[0];
+
+	VkCommandBufferBeginInfo begin_info{};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(out, &begin_info);
+
+	return out;
+}
+
+void VkRender::EndSingleCommandBuffer(const VkCommandBuffer& command_buffer, const VkCommandPool& command_pool, const VkQueue& queue)
+{
+	vkEndCommandBuffer(command_buffer);
+
+	VkSubmitInfo submit_info{};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command_buffer;
+
+	vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueWaitIdle(queue);
+
+	vkFreeCommandBuffers(m_render_context->m_vk_context->m_device, command_pool, 1, &command_buffer);
 }
 
 #pragma endregion

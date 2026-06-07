@@ -6,8 +6,8 @@
 #include <glfw/glfw3.h>
 
 struct Vertex {
-	glm::vec3 position;
-	glm::vec2 tex_coord;
+	glm::vec2 position;
+	glm::vec3 color;
 
 	static VkVertexInputBindingDescription GetBindingDescription() {
 		VkVertexInputBindingDescription out{};
@@ -23,13 +23,13 @@ struct Vertex {
 
 		out[0].binding = 0;
 		out[0].location = 0;
-		out[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+		out[0].format = VK_FORMAT_R32G32_SFLOAT;
 		out[0].offset = offsetof(Vertex, position);
 
 		out[1].binding = 0;
 		out[1].location = 1;
-		out[1].format = VK_FORMAT_R32G32_SFLOAT;
-		out[1].offset = offsetof(Vertex, tex_coord);
+		out[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		out[1].offset = offsetof(Vertex, color);
 
 		return out;
 	}
