@@ -14,10 +14,16 @@ VkRender::VkRender(VkRenderContext* render_context) : m_render_context(render_co
 
 	m_descriptor_pool = CreateDescriptorPool();
 	m_descriptor_sets = CreateDescriptorSets(m_uniform_buffers);
+	m_graphics_command_pool = CreateCommandPool(m_render_context->m_vk_context->m_indices.graphics_family.value(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	m_transfer_command_pool = CreateCommandPool(m_render_context->m_vk_context->m_indices.transfer_family.value(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
+	m_graphics_command_buffer = CreateCommandBuffer(m_graphics_command_pool, MAX_FRAMES_IN_FLIGHT);
 }
 
 VkRender::~VkRender()
 {
+	vkDestroyCommandPool(m_render_context->m_vk_context->m_device, m_graphics_command_pool, nullptr);
+	vkDestroyCommandPool(m_render_context->m_vk_context->m_device, m_transfer_command_pool, nullptr);
+
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
 		vkDestroyBuffer(m_render_context->m_vk_context->m_device, m_uniform_buffers[i], nullptr);
 		vkFreeMemory(m_render_context->m_vk_context->m_device, m_uniform_buffers_memory[i], nullptr);
@@ -97,6 +103,41 @@ void VkRender::CreateUniformBuffer(std::vector<VkBuffer>& buffers, std::vector<V
 		CreateBuffer(size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, buffers[i], device_memory[i]);
 		vkMapMemory(m_render_context->m_vk_context->m_device, device_memory[i], 0, size, 0, &mapped_memory[i]);
 	}
+}
+
+#pragma endregion
+
+#pragma region Command Buffers
+
+VkCommandPool VkRender::CreateCommandPool(uint32_t queue_family_index, VkCommandPoolCreateFlagBits flags)
+{
+	VkCommandPoolCreateInfo pool_info{};
+	pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	pool_info.flags = flags;
+	pool_info.queueFamilyIndex = queue_family_index;
+
+	VkCommandPool out;
+	if (vkCreateCommandPool(m_render_context->m_vk_context->m_device, &pool_info, nullptr, &out) != VK_SUCCESS) {
+		THROW_RUNTIME_ERROR("Failed to create command pool.");
+	}
+
+	return out;
+}
+
+std::vector<VkCommandBuffer> VkRender::CreateCommandBuffer(const VkCommandPool& command_pool, uint32_t count)
+{
+	VkCommandBufferAllocateInfo alloc_info{};
+	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	alloc_info.commandBufferCount = count;
+	alloc_info.commandPool = command_pool;
+	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+	std::vector<VkCommandBuffer> out(count);
+	if (vkAllocateCommandBuffers(m_render_context->m_vk_context->m_device, &alloc_info, out.data()) != VK_SUCCESS) {
+		THROW_RUNTIME_ERROR("Failed to create command buffer");
+	}
+
+	return out;
 }
 
 #pragma endregion
