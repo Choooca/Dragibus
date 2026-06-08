@@ -18,7 +18,6 @@ struct Renderer {
 	VkPipelineLayout m_pipeline_layout;
 	VkPipeline m_graphics_pipeline;
 
-
 	//Command Buffers
 	VkCommandPool m_graphics_command_pool;
 	VkCommandPool m_transfer_command_pool;
@@ -39,10 +38,11 @@ struct Renderer {
 	std::vector<VkDescriptorSet> m_descriptor_sets;
 
 	//Synchronisation
-
 	std::vector<VkSemaphore> m_image_available_semaphore;
 	std::vector<VkFence> m_in_flight_fence;
 
+	//Loop
+	uint32_t m_current_frame = 0;
 };
 
 Renderer *CreateRenderer(const VkContext& vk_context);
@@ -69,3 +69,5 @@ void CreatePrimitiveBuffer(const VkContext vk_context, const VkCommandPool &comm
 	vkDestroyBuffer(vk_context.m_device, staging_buffer, nullptr);
 	vkFreeMemory(vk_context.m_device, staging_buffer_memory, nullptr);
 }
+
+void Loop();

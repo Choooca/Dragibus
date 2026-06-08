@@ -11,16 +11,6 @@
 
 namespace {
 
-#pragma region Types
-
-	struct UniformBufferObject {
-		alignas(16) glm::mat4 model;
-		alignas(16) glm::mat4 view;
-		alignas(16) glm::mat4 perspective;
-	};
-
-#pragma endregion
-
 #pragma region Primitives Memory
 
 	void CreateUniformBuffer(const VkContext &vk_context, std::vector<VkBuffer>& buffers, std::vector<VkDeviceMemory>& device_memory, std::vector<void*>& mapped_memory)
@@ -125,7 +115,7 @@ namespace {
 		rasterization_info.polygonMode = VK_POLYGON_MODE_FILL;
 		rasterization_info.lineWidth = 1.0f;
 		rasterization_info.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterization_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		rasterization_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterization_info.depthBiasEnable = VK_FALSE;
 		rasterization_info.depthBiasConstantFactor = 0.0f;
 		rasterization_info.depthBiasClamp = 0.0f;
@@ -345,7 +335,7 @@ namespace {
 Renderer *CreateRenderer(const VkContext& vk_context) {
 
 	std::vector<Vertex> vertices = {
-		{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+		{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
 		{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
 		{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
 	};
@@ -396,3 +386,4 @@ void DestroyRenderer(const VkContext& vk_context, Renderer *renderer) {
 }
 
 #pragma endregion
+

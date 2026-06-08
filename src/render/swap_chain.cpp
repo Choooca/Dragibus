@@ -151,7 +151,7 @@ namespace {
 
 #pragma region Framebuffer
 
-std::vector<VkFramebuffer> CreateFramebuffer(const VkContext& vk_context, const VkSwapChain& swap_chain, const VkRenderPass& render_pass) {
+std::vector<VkFramebuffer> CreateFramebuffer(const VkContext& vk_context, const SwapChain& swap_chain, const VkRenderPass& render_pass) {
 
 	size_t size = swap_chain.m_swap_chain_image_views.size();
 	std::vector<VkFramebuffer> framebuffers(size);
@@ -182,9 +182,9 @@ std::vector<VkFramebuffer> CreateFramebuffer(const VkContext& vk_context, const 
 
 #pragma region Render Context
 
-VkSwapChain *CreateSwapChain(const VkContext &vk_context)
+SwapChain *CreateSwapChain(const VkContext &vk_context)
 {
-	VkSwapChain *out = new VkSwapChain();
+	SwapChain *out = new SwapChain();
 
 	SwapChainSupportDetails swap_chain_support_details = GetSwapChainSupportDetails(vk_context.m_physical_device, vk_context.m_surface);
 
@@ -193,16 +193,16 @@ VkSwapChain *CreateSwapChain(const VkContext &vk_context)
 	out->m_swap_chain = CreateSwapChainHandle(vk_context, out->m_swap_chain_extent, out->m_swap_chain_present_mode, swap_chain_support_details);
 	out->m_swap_chain_images = RetrieveSwapChainImage(vk_context, out->m_swap_chain);
 	out->m_swap_chain_image_views = CreateSwapChainImageViews(vk_context, out->m_swap_chain_images);
-	out->m_render_finish_semaphore = CreateSemaphores(vk_context, out->m_render_finish_semaphore.size());
+	out->m_render_finish_semaphore = CreateSemaphores(vk_context, out->m_swap_chain_images.size());
 
 	return out;
 }
 
-void DestroySwapChain(const VkContext &vk_context, VkSwapChain *swap_chain) {
+void DestroySwapChain(const VkContext &vk_context, SwapChain *swap_chain) {
 
 	DestroySemaphores(vk_context, swap_chain->m_render_finish_semaphore);
 
-	for (VkFramebuffer framebuffer : swap_chain->m_framebuffer) {
+	for (VkFramebuffer framebuffer : swap_chain->m_framebuffers) {
 		vkDestroyFramebuffer(vk_context.m_device, framebuffer, nullptr);
 	}
 

@@ -5,6 +5,12 @@
 #include <glm/glm.hpp>
 #include <glfw/glfw3.h>
 
+struct UniformBufferObject {
+	alignas(16) glm::mat4 model;
+	alignas(16) glm::mat4 view;
+	alignas(16) glm::mat4 perspective;
+};
+
 struct Vertex {
 	glm::vec2 position;
 	glm::vec3 color;

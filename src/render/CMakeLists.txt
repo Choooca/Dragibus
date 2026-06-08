@@ -8,5 +8,6 @@ target_sources(Dragibus
 		vk_resources.cpp
 		renderer.cpp
 		vk_utils.cpp
+		render_loop.cpp
 		primitives.h
 )
