@@ -1,8 +1,11 @@
 #include "render_loop.h"
 
 #include <array>
+#include <chrono>
 
 #include <glfw/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <render/vk_context.h>
 #include <render/swap_chain.h>
@@ -64,8 +67,19 @@ namespace {
 		vkEndCommandBuffer(command_buffer);
 	}
 
-	void UpdateUniformBuffer(const Renderer &renderer, uint32_t current_frame) {
+	void UpdateUniformBuffer(const Renderer &renderer, const SwapChain &swap_chain, uint32_t current_frame) {
+		std::chrono::high_resolution_clock timer;
+
+		static std::chrono::steady_clock::time_point start = timer.now();
+		std::chrono::steady_clock::time_point now = timer.now();
+
+		float delta_time = std::chrono::duration<float, std::chrono::seconds::period>(now - start).count();
+
 		UniformBufferObject ubo{};
+		ubo.model = glm::rotate(glm::mat4(1.0f), delta_time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.perspective = glm::perspective(glm::radians(45.0f), swap_chain.m_swap_chain_extent.width / (float)swap_chain.m_swap_chain_extent.height, 0.1f, 10.0f);
+		ubo.perspective[1][1] *= -1;
 
 		memcpy(renderer.m_uniform_buffers_mapped_memory[current_frame], &ubo, sizeof(UniformBufferObject));
 	}
@@ -91,7 +105,7 @@ void DrawFrame(const VkContext& vk_context, SwapChain& swap_chain, Renderer& ren
 	vkResetCommandBuffer(renderer.m_graphics_command_buffer[renderer.m_current_frame], 0);
 	RecordCommandBuffer(vk_context, swap_chain, renderer, renderer.m_graphics_command_buffer[renderer.m_current_frame], image_index);
 
-	UpdateUniformBuffer(renderer, renderer.m_current_frame);
+	UpdateUniformBuffer(renderer, swap_chain, renderer.m_current_frame);
 
 	VkSemaphore wait_semaphores[] = { renderer.m_image_available_semaphore[renderer.m_current_frame] };
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
