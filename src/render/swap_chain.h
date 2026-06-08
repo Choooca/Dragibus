@@ -16,9 +16,12 @@ struct SwapChain {
 	std::vector<VkFramebuffer> m_framebuffers;
 
 	std::vector<VkSemaphore> m_render_finish_semaphore;
+
+	bool m_frame_buffer_resized;
 };
 
 std::vector<VkFramebuffer> CreateFramebuffer(const VkContext& vk_context, const SwapChain& swap_chain, const VkRenderPass& render_pass);
 
 SwapChain *CreateSwapChain(const VkContext &vk_context);
 void DestroySwapChain(const VkContext& vk_context, SwapChain* swap_chain);
+void RecreateSwapChain(const VkContext& vk_context, SwapChain& swap_chain, const VkRenderPass& render_pass);

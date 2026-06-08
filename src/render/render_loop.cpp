@@ -68,15 +68,22 @@ namespace {
 
 		memcpy(renderer.m_uniform_buffers_mapped_memory[current_frame], &ubo, sizeof(UniformBufferObject));
 	}
-
 }
 
-void DrawFrame(const VkContext& vk_context, const SwapChain& swap_chain, Renderer& renderer)
+void DrawFrame(const VkContext& vk_context, SwapChain& swap_chain, Renderer& renderer)
 {
 	vkWaitForFences(vk_context.m_device, 1, &renderer.m_in_flight_fence[renderer.m_current_frame], VK_TRUE, UINT64_MAX);
 
 	uint32_t image_index;
-	vkAcquireNextImageKHR(vk_context.m_device, swap_chain.m_swap_chain, UINT64_MAX, renderer.m_image_available_semaphore[renderer.m_current_frame], VK_NULL_HANDLE, &image_index);
+	VkResult result = vkAcquireNextImageKHR(vk_context.m_device, swap_chain.m_swap_chain, UINT64_MAX, renderer.m_image_available_semaphore[renderer.m_current_frame], VK_NULL_HANDLE, &image_index);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+		RecreateSwapChain(vk_context, swap_chain, renderer.m_render_pass);
+		return;
+	}
+	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+		THROW_RUNTIME_ERROR("Failed to acquire swap chain image");
+	}
 
 	vkResetFences(vk_context.m_device, 1, &renderer.m_in_flight_fence[renderer.m_current_frame]);
 
@@ -114,7 +121,15 @@ void DrawFrame(const VkContext& vk_context, const SwapChain& swap_chain, Rendere
 	present_info.pImageIndices = &image_index;
 	present_info.pResults = nullptr;
 
-	vkQueuePresentKHR(vk_context.m_present_queue, &present_info);
+	result = vkQueuePresentKHR(vk_context.m_present_queue, &present_info);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || swap_chain.m_frame_buffer_resized) {
+		swap_chain.m_frame_buffer_resized = false;
+		RecreateSwapChain(vk_context, swap_chain, renderer.m_render_pass);
+	}
+	else if (result != VK_SUCCESS){
+		THROW_RUNTIME_ERROR("Failed to present swap chain image");
+	}
 
 	renderer.m_current_frame = (renderer.m_current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

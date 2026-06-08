@@ -29,7 +29,7 @@ void Application::Loop()
 		DrawFrame(*vk_context, *swap_chain, *renderer);
 	}
 
-	vkQueueWaitIdle(vk_context->m_graphics_queue);
+	vkDeviceWaitIdle(vk_context->m_device);
 
 	DestroyRenderer(*vk_context, renderer);
 	DestroySwapChain(*vk_context, swap_chain);

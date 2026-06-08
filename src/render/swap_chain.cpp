@@ -121,13 +121,13 @@ namespace {
 		return out;
 	}
 
-	std::vector<VkImage> RetrieveSwapChainImage(const VkContext &ctx, const VkSwapchainKHR &swap_chain) {
+	std::vector<VkImage> RetrieveSwapChainImage(const VkContext &vk_context, const VkSwapchainKHR &swap_chain) {
 		
 		uint32_t swap_chain_image_count; 
-		vkGetSwapchainImagesKHR(ctx.m_device, swap_chain, &swap_chain_image_count, nullptr);
+		vkGetSwapchainImagesKHR(vk_context.m_device, swap_chain, &swap_chain_image_count, nullptr);
 
 		std::vector<VkImage> swap_chain_images(swap_chain_image_count);
-		vkGetSwapchainImagesKHR(ctx.m_device, swap_chain, &swap_chain_image_count, swap_chain_images.data());
+		vkGetSwapchainImagesKHR(vk_context.m_device, swap_chain, &swap_chain_image_count, swap_chain_images.data());
 
 		return swap_chain_images;
 
@@ -143,6 +143,28 @@ namespace {
 		}
 
 		return swap_chain_image_views;
+	}
+
+	void CleanupSwapChain(const VkContext &vk_context,  SwapChain &swap_chain) {
+
+		for (VkFramebuffer framebuffer : swap_chain.m_framebuffers) {
+			vkDestroyFramebuffer(vk_context.m_device, framebuffer, nullptr);
+		}
+
+		for (const VkImageView& image_view : swap_chain.m_swap_chain_image_views) {
+			vkDestroyImageView(vk_context.m_device, image_view, nullptr);
+		}
+
+		vkDestroySwapchainKHR(vk_context.m_device, swap_chain.m_swap_chain, nullptr);
+	}
+
+#pragma endregion
+
+#pragma region Frambuffer
+
+	void FramebufferResizedCallback(GLFWwindow* window, int width, int height) {
+		SwapChain* swap_chain = reinterpret_cast<SwapChain*>(window);
+		swap_chain->m_frame_buffer_resized = true;
 	}
 
 #pragma endregion
@@ -180,11 +202,14 @@ std::vector<VkFramebuffer> CreateFramebuffer(const VkContext& vk_context, const 
 
 #pragma endregion
 
-#pragma region Render Context
+#pragma region Swap Chain
 
 SwapChain *CreateSwapChain(const VkContext &vk_context)
 {
 	SwapChain *out = new SwapChain();
+
+	glfwSetWindowUserPointer(vk_context.m_window, out);
+	glfwSetFramebufferSizeCallback(vk_context.m_window, FramebufferResizedCallback);
 
 	SwapChainSupportDetails swap_chain_support_details = GetSwapChainSupportDetails(vk_context.m_physical_device, vk_context.m_surface);
 
@@ -201,18 +226,30 @@ SwapChain *CreateSwapChain(const VkContext &vk_context)
 void DestroySwapChain(const VkContext &vk_context, SwapChain *swap_chain) {
 
 	DestroySemaphores(vk_context, swap_chain->m_render_finish_semaphore);
-
-	for (VkFramebuffer framebuffer : swap_chain->m_framebuffers) {
-		vkDestroyFramebuffer(vk_context.m_device, framebuffer, nullptr);
-	}
-
-	for (const VkImageView& image_view : swap_chain->m_swap_chain_image_views) {
-		vkDestroyImageView(vk_context.m_device, image_view, nullptr);
-	}
-
-	vkDestroySwapchainKHR(vk_context.m_device, swap_chain->m_swap_chain, nullptr);
+	CleanupSwapChain(vk_context, *swap_chain);
 
 	delete swap_chain;
+}
+
+void RecreateSwapChain(const VkContext& vk_context, SwapChain &swap_chain, const VkRenderPass &render_pass) {
+
+	int width = 0, height = 0;
+	glfwGetFramebufferSize(vk_context.m_window, &width, &height);
+	while (width == 0 || height == 0) {
+		glfwGetFramebufferSize(vk_context.m_window, &width, &height);
+		glfwWaitEvents();
+	}
+
+	vkDeviceWaitIdle(vk_context.m_device);
+
+	CleanupSwapChain(vk_context, swap_chain);
+
+	SwapChainSupportDetails swap_chain_support_details = GetSwapChainSupportDetails(vk_context.m_physical_device, vk_context.m_surface);
+	swap_chain.m_swap_chain_extent = GetSwapChainExtent(vk_context, swap_chain_support_details);
+	swap_chain.m_swap_chain = CreateSwapChainHandle(vk_context, swap_chain.m_swap_chain_extent, swap_chain.m_swap_chain_present_mode, swap_chain_support_details);
+	swap_chain.m_swap_chain_images = RetrieveSwapChainImage(vk_context, swap_chain.m_swap_chain);
+	swap_chain.m_swap_chain_image_views = CreateSwapChainImageViews(vk_context, swap_chain.m_swap_chain_images);
+	swap_chain.m_framebuffers = CreateFramebuffer(vk_context, swap_chain, render_pass);
 }
 
 #pragma endregion
