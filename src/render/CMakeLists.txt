@@ -4,8 +4,9 @@ target_sources(Dragibus
 	PRIVATE 
 		window.cpp
 		vk_context.cpp
-		vk_render_context.cpp
-		vk_render.cpp
+		swap_chain.cpp
+		vk_resources.cpp
+		renderer.cpp
 		vk_utils.cpp
 		primitives.h
 )

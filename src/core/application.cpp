@@ -4,8 +4,8 @@
 
 #include <render/window.h>
 #include <render/vk_context.h>
-#include <render/vk_render_context.h>
-#include <render/vk_render.h>
+#include <render/swap_chain.h>
+#include <render/renderer.h>
 
 Application::Application()
 {
@@ -19,17 +19,16 @@ Application::~Application()
 
 void Application::Loop()
 {
-	VkContext context = CreateContext(m_window->GetGLFWWindow());
-	VkRenderContext render_context = CreateRenderContext(context);
-
-	VkRender* render = new VkRender(&render_context);
+	VkContext *vk_context = CreateContext(m_window->GetGLFWWindow());
+	VkSwapChain *swap_chain = CreateSwapChain(*vk_context);
+	Renderer* renderer = CreateRenderer(*vk_context);
+	swap_chain->m_framebuffer = CreateFramebuffer(*vk_context, *swap_chain, renderer->m_render_pass);
 
 	while (!glfwWindowShouldClose(m_window->GetGLFWWindow())) {
 		glfwPollEvents();
 	}
 
-	delete render;
-
-	DestroyRenderContext(render_context);
-	DestroyContext(context);
+	DestroyRenderer(*vk_context, renderer);
+	DestroySwapChain(*vk_context, swap_chain);
+	DestroyContext(vk_context);
 }

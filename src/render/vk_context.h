@@ -28,7 +28,9 @@ struct VkContext {
 	VkQueue m_graphics_queue;
 	VkQueue m_transfer_queue;
 	VkQueue m_present_queue;
+
+	VkSurfaceFormatKHR m_swap_chain_image_format;
 };
 
-VkContext CreateContext(GLFWwindow *window);
-void DestroyContext(const VkContext &ctx);
+VkContext *CreateContext(GLFWwindow *window);
+void DestroyContext(VkContext* vk_context);

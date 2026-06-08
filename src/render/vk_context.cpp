@@ -261,11 +261,31 @@ namespace {
 
 #pragma endregion 
 
+#pragma region Swap Chain data
+
+	VkSurfaceFormatKHR ChooseSwapChainImageFormat(const SwapChainSupportDetails& swap_chain_support_details) {
+
+		const std::vector<VkSurfaceFormatKHR>& available_formats = swap_chain_support_details.formats;
+
+		VkSurfaceFormatKHR image_format = available_formats[0];
+		for (size_t i = 1; i < available_formats.size(); ++i) {
+			const VkSurfaceFormatKHR& available_format = available_formats[i];
+			if (available_format.format == VK_FORMAT_B8G8R8A8_SRGB && available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+				image_format = available_format;
+				break;
+			}
+		}
+
+		return image_format;
+	}
+
+#pragma endregion
+
 }
 
 #pragma region Graphic Context
 
-VkContext CreateContext(GLFWwindow* window)
+VkContext *CreateContext(GLFWwindow* window)
 {
 	//Layers
 	std::vector<const char*> validation_layers{
@@ -302,34 +322,38 @@ VkContext CreateContext(GLFWwindow* window)
 	debug_info.pUserData = nullptr;
 
 	//Graphic Context
-	VkContext out{};
-	out.m_window = window;
+	VkContext *out = new VkContext();
+	out->m_window = window;
 
-	out.m_instance = CreateInstance(validation_layers, extensions, debug_info);
-	out.m_debug_messenger = CreateDebugMessenger(out.m_instance, debug_info);
-	out.m_surface = CreateSurface(out.m_instance, out.m_window);
-	out.m_physical_device = PickPhysicalDevice(out.m_instance, out.m_surface, device_extensions, out.m_indices);
-	out.m_device = CreateLogicalDevice(out.m_physical_device, out.m_indices, device_extensions, validation_layers);
+	out->m_instance = CreateInstance(validation_layers, extensions, debug_info);
+	out->m_debug_messenger = CreateDebugMessenger(out->m_instance, debug_info);
+	out->m_surface = CreateSurface(out->m_instance, out->m_window);
+	out->m_physical_device = PickPhysicalDevice(out->m_instance, out->m_surface, device_extensions, out->m_indices);
+	out->m_device = CreateLogicalDevice(out->m_physical_device, out->m_indices, device_extensions, validation_layers);
 	
-	vkGetDeviceQueue(out.m_device, out.m_indices.graphics_family.value(), 0, &out.m_graphics_queue);
-	vkGetDeviceQueue(out.m_device, out.m_indices.present_family.value(), 0, &out.m_present_queue);
-	vkGetDeviceQueue(out.m_device, out.m_indices.transfer_family.value(), 0, &out.m_transfer_queue);
+	vkGetDeviceQueue(out->m_device, out->m_indices.graphics_family.value(), 0, &out->m_graphics_queue);
+	vkGetDeviceQueue(out->m_device, out->m_indices.present_family.value(), 0, &out->m_present_queue);
+	vkGetDeviceQueue(out->m_device, out->m_indices.transfer_family.value(), 0, &out->m_transfer_queue);
+
+	out->m_swap_chain_image_format = ChooseSwapChainImageFormat(GetSwapChainSupportDetails(out->m_physical_device, out->m_surface));
 
 	return out;
 }
 
-void DestroyContext(const VkContext& ctx)
+void DestroyContext(VkContext *vk_context)
 {
-	vkDestroyDevice(ctx.m_device, nullptr);
+	vkDestroyDevice(vk_context->m_device, nullptr);
 
-	vkDestroySurfaceKHR(ctx.m_instance, ctx.m_surface, nullptr);
+	vkDestroySurfaceKHR(vk_context->m_instance, vk_context->m_surface, nullptr);
 
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(ctx.m_instance, "vkDestroyDebugUtilsMessengerEXT");
+	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vk_context->m_instance, "vkDestroyDebugUtilsMessengerEXT");
 	if (func != nullptr) {
-		func(ctx.m_instance, ctx.m_debug_messenger, nullptr);
+		func(vk_context->m_instance, vk_context->m_debug_messenger, nullptr);
 	}
 
-	vkDestroyInstance(ctx.m_instance, nullptr);
+	vkDestroyInstance(vk_context->m_instance, nullptr);
+	
+	delete vk_context;
 }
 
 #pragma endregion
