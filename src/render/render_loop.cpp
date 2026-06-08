@@ -38,9 +38,10 @@ namespace {
 		vkCmdBeginRenderPass(command_buffer, &render_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderer.m_graphics_pipeline);
 
-		VkBuffer vertex_buffers[] = {renderer.m_vertex_buffers};
+		VkBuffer vertex_buffers[] = {renderer.m_vertex_buffer};
 		VkDeviceSize offset = { 0 };
 		vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, &offset);
+		vkCmdBindIndexBuffer(command_buffer, renderer.m_indice_buffer, 0, VK_INDEX_TYPE_UINT16);
 
 		VkViewport viewport{};
 		viewport.x = 0;
@@ -57,7 +58,7 @@ namespace {
 		vkCmdSetScissor(command_buffer, 0, 1, &scissors);
 
 		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderer.m_pipeline_layout, 0, 1, &renderer.m_descriptor_sets[current_frame], 0, nullptr);
-		vkCmdDraw(command_buffer, 3, 1, 0, 0);
+		vkCmdDrawIndexed(command_buffer, 6, 1, 0, 0, 0);
 		vkCmdEndRenderPass(command_buffer);
 
 		vkEndCommandBuffer(command_buffer);

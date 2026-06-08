@@ -29,8 +29,11 @@ struct Renderer {
 	std::vector<void*> m_uniform_buffers_mapped_memory;
 
 	//Primitive Buffer
-	VkBuffer m_vertex_buffers;
-	VkDeviceMemory m_vertex_buffers_memory;
+	VkBuffer m_vertex_buffer;
+	VkDeviceMemory m_vertex_buffer_memory;
+
+	VkBuffer m_indice_buffer;
+	VkDeviceMemory m_indice_buffer_memory;
 
 	//Descriptors
 	VkDescriptorSetLayout m_descriptor_set_layout;
@@ -49,14 +52,14 @@ Renderer *CreateRenderer(const VkContext& vk_context);
 void DestroyRenderer(const VkContext& vk_context, Renderer *renderer);
 
 template<typename T>
-void CreatePrimitiveBuffer(const VkContext vk_context, const VkCommandPool &command_pool, std::vector<T> primitive_data, VkBuffer& buffer, VkDeviceMemory& device_memory, VkBufferUsageFlags buffer_usage) {
-		
+void CreatePrimitiveBuffer(const VkContext vk_context, const VkCommandPool& command_pool, std::vector<T> primitive_data, VkBuffer& buffer, VkDeviceMemory& device_memory, VkBufferUsageFlags buffer_usage) {
+
 	VkDeviceSize buffer_size = sizeof(primitive_data[0]) * primitive_data.size();
 
 	VkBuffer staging_buffer;
 	VkDeviceMemory staging_buffer_memory;
 	CreateBuffer(vk_context, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
-	
+
 	void* data;
 	vkMapMemory(vk_context.m_device, staging_buffer_memory, 0, buffer_size, 0, &data);
 	memcpy(data, primitive_data.data(), buffer_size);
@@ -68,6 +71,4 @@ void CreatePrimitiveBuffer(const VkContext vk_context, const VkCommandPool &comm
 
 	vkDestroyBuffer(vk_context.m_device, staging_buffer, nullptr);
 	vkFreeMemory(vk_context.m_device, staging_buffer_memory, nullptr);
-}
-
-void Loop();
+};

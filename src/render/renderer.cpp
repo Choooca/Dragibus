@@ -334,10 +334,15 @@ namespace {
 
 Renderer *CreateRenderer(const VkContext& vk_context) {
 
-	std::vector<Vertex> vertices = {
-		{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-		{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	const std::vector<Vertex> vertices = {
+		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+	};
+
+	const std::vector<uint16_t> indices = {
+		0, 1, 2, 2, 3, 0
 	};
 
 	Renderer *out = new Renderer();
@@ -353,7 +358,8 @@ Renderer *CreateRenderer(const VkContext& vk_context) {
 	out->m_graphics_command_pool = CreateCommandPool(vk_context, vk_context.m_indices.graphics_family.value(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	out->m_transfer_command_pool = CreateCommandPool(vk_context, vk_context.m_indices.transfer_family.value(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 	out->m_graphics_command_buffer = CreateCommandBuffer(vk_context, out->m_graphics_command_pool, MAX_FRAMES_IN_FLIGHT);
-	CreatePrimitiveBuffer<Vertex>(vk_context, out->m_transfer_command_pool, vertices, out->m_vertex_buffers, out->m_vertex_buffers_memory, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+	CreatePrimitiveBuffer<Vertex>(vk_context, out->m_transfer_command_pool, vertices, out->m_vertex_buffer, out->m_vertex_buffer_memory, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+	CreatePrimitiveBuffer<uint16_t>(vk_context, out->m_transfer_command_pool, indices, out->m_indice_buffer, out->m_indice_buffer_memory, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
 	out->m_image_available_semaphore = CreateSemaphores(vk_context, MAX_FRAMES_IN_FLIGHT);
 	out->m_in_flight_fence = CreateFences(vk_context, MAX_FRAMES_IN_FLIGHT, VK_FENCE_CREATE_SIGNALED_BIT);
@@ -366,8 +372,11 @@ void DestroyRenderer(const VkContext& vk_context, Renderer *renderer) {
 	DestroySemaphores(vk_context, renderer->m_image_available_semaphore);
 	DestroyFences(vk_context, renderer->m_in_flight_fence);
 
-	vkDestroyBuffer(vk_context.m_device, renderer->m_vertex_buffers, nullptr);
-	vkFreeMemory(vk_context.m_device, renderer->m_vertex_buffers_memory, nullptr);
+	vkDestroyBuffer(vk_context.m_device, renderer->m_vertex_buffer, nullptr);
+	vkFreeMemory(vk_context.m_device, renderer->m_vertex_buffer_memory, nullptr);
+
+	vkDestroyBuffer(vk_context.m_device, renderer->m_indice_buffer, nullptr);
+	vkFreeMemory(vk_context.m_device, renderer->m_indice_buffer_memory, nullptr);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
 		vkDestroyBuffer(vk_context.m_device, renderer->m_uniform_buffers[i], nullptr);
