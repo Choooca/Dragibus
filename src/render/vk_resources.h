@@ -33,4 +33,4 @@ VkImageView CreateImageView(const VkContext& ctx, const VkImage& image, const Vk
 
 //Textures
 void CreateTextureImage(const VkContext &vk_context, const Renderer &renderer, const std::string &texture_name, VkImage &texture, VkDeviceMemory &texture_memory);
-VkSampler CreateSampler();
+VkSampler CreateSampler(const VkContext& vk_context);

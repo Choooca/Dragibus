@@ -44,6 +44,12 @@ struct Renderer {
 	std::vector<VkSemaphore> m_image_available_semaphore;
 	std::vector<VkFence> m_in_flight_fence;
 
+	//Textures
+	VkImage m_texture_image;
+	VkDeviceMemory m_texture_image_memory;
+	VkImageView m_texture_image_view;
+	VkSampler m_texture_sampler;
+
 	//Loop
 	uint32_t m_current_frame = 0;
 };

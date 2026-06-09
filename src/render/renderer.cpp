@@ -94,7 +94,7 @@ namespace {
 		dynamic_state_info.pDynamicStates = dynamic_state.data();
 
 		VkVertexInputBindingDescription binding_description = Vertex::GetBindingDescription();
-		std::array<VkVertexInputAttributeDescription, 2> attributes_descriptions = Vertex::GetVertexInputAttributeDescription();
+		std::array<VkVertexInputAttributeDescription, 3> attributes_descriptions = Vertex::GetVertexInputAttributeDescription();
 
 		VkPipelineVertexInputStateCreateInfo vertex_input_info{};
 		vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -253,7 +253,14 @@ namespace {
 		ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 		ubo_layout_binding.pImmutableSamplers = nullptr;
 
-		std::array<VkDescriptorSetLayoutBinding, 1> bindings = { ubo_layout_binding };
+		VkDescriptorSetLayoutBinding image_layout_binding{};
+		image_layout_binding.binding = 1;
+		image_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		image_layout_binding.descriptorCount = 1;
+		image_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		image_layout_binding.pImmutableSamplers = nullptr;
+
+		std::array<VkDescriptorSetLayoutBinding, 2> bindings = { ubo_layout_binding, image_layout_binding  };
 		VkDescriptorSetLayoutCreateInfo layout_info{};
 		layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layout_info.bindingCount = bindings.size();
@@ -269,9 +276,11 @@ namespace {
 
 	VkDescriptorPool CreateDescriptorPool(const VkContext &vk_context) {
 
-		std::array<VkDescriptorPoolSize, 1> pool_sizes{};
+		std::array<VkDescriptorPoolSize, 2> pool_sizes{};
 		pool_sizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 		pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		pool_sizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+		pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
 		VkDescriptorPoolCreateInfo  pool_info{};
 		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -287,7 +296,7 @@ namespace {
 		return descriptor_pool;
 	}
 
-	std::vector<VkDescriptorSet> CreateDescriptorSets(const VkContext &vk_context, const std::vector<VkBuffer>& uniform_buffers, const VkDescriptorPool &descriptor_pool, const VkDescriptorSetLayout &descriptor_set_layout) {
+	std::vector<VkDescriptorSet> CreateDescriptorSets(const VkContext& vk_context, const VkDescriptorPool& descriptor_pool, const VkDescriptorSetLayout& descriptor_set_layout, const std::vector<VkBuffer>& uniform_buffers, const VkImageView& image_view, const VkSampler& sampler) {
 
 		std::vector<VkDescriptorSetLayout> descriptor_set_layouts(MAX_FRAMES_IN_FLIGHT, descriptor_set_layout);
 		VkDescriptorSetAllocateInfo alloc_info{};
@@ -307,7 +316,12 @@ namespace {
 			buffer_info.offset = 0;
 			buffer_info.range = sizeof(UniformBufferObject);
 
-			std::array<VkWriteDescriptorSet, 1> descriptor_writes{};
+			VkDescriptorImageInfo image_info{};
+			image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			image_info.imageView = image_view;
+			image_info.sampler = sampler;
+
+			std::array<VkWriteDescriptorSet, 2> descriptor_writes{};
 			descriptor_writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptor_writes[0].dstSet = descriptor_sets[i];
 			descriptor_writes[0].dstBinding = 0;
@@ -315,6 +329,14 @@ namespace {
 			descriptor_writes[0].descriptorCount = 1;
 			descriptor_writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			descriptor_writes[0].pBufferInfo = &buffer_info;
+
+			descriptor_writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptor_writes[1].dstSet = descriptor_sets[i];
+			descriptor_writes[1].dstBinding = 1;
+			descriptor_writes[1].dstArrayElement = 0;
+			descriptor_writes[1].descriptorCount = 1;
+			descriptor_writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptor_writes[1].pImageInfo = &image_info;
 
 			vkUpdateDescriptorSets(vk_context.m_device, descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
 		}
@@ -335,10 +357,10 @@ namespace {
 Renderer *CreateRenderer(const VkContext& vk_context) {
 
 	const std::vector<Vertex> vertices = {
-		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 	};
 
 	const std::vector<uint16_t> indices = {
@@ -354,12 +376,17 @@ Renderer *CreateRenderer(const VkContext& vk_context) {
 	out->m_descriptor_pool = CreateDescriptorPool(vk_context);
 	out->m_pipeline_layout = CreatePipelineLayout(vk_context, out->m_descriptor_set_layout);
 	out->m_graphics_pipeline = CreateGraphicsPipeline(vk_context, out->m_render_pass, out->m_pipeline_layout, "simple_shader_vert.spv", "simple_shader_frag.spv");
-	out->m_descriptor_sets = CreateDescriptorSets(vk_context, out->m_uniform_buffers, out->m_descriptor_pool, out->m_descriptor_set_layout);
 	out->m_graphics_command_pool = CreateCommandPool(vk_context, vk_context.m_indices.graphics_family.value(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	out->m_transfer_command_pool = CreateCommandPool(vk_context, vk_context.m_indices.transfer_family.value(), VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
 	out->m_graphics_command_buffer = CreateCommandBuffer(vk_context, out->m_graphics_command_pool, MAX_FRAMES_IN_FLIGHT);
 	CreatePrimitiveBuffer<Vertex>(vk_context, out->m_transfer_command_pool, vertices, out->m_vertex_buffer, out->m_vertex_buffer_memory, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 	CreatePrimitiveBuffer<uint16_t>(vk_context, out->m_transfer_command_pool, indices, out->m_indice_buffer, out->m_indice_buffer_memory, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+
+	CreateTextureImage(vk_context, *out, "eliasdridi.jpg", out->m_texture_image, out->m_texture_image_memory);
+	out->m_texture_image_view = CreateImageView(vk_context, out->m_texture_image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+	out->m_texture_sampler = CreateSampler(vk_context);
+
+	out->m_descriptor_sets = CreateDescriptorSets(vk_context, out->m_descriptor_pool, out->m_descriptor_set_layout, out->m_uniform_buffers, out->m_texture_image_view, out->m_texture_sampler);
 
 	out->m_image_available_semaphore = CreateSemaphores(vk_context, MAX_FRAMES_IN_FLIGHT);
 	out->m_in_flight_fence = CreateFences(vk_context, MAX_FRAMES_IN_FLIGHT, VK_FENCE_CREATE_SIGNALED_BIT);

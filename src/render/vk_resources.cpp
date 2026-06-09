@@ -293,7 +293,7 @@ void CopyBufferToImage(const VkContext &vk_context, const Renderer &renderer, co
 	region.imageSubresource.baseArrayLayer = 0;
 	region.imageSubresource.mipLevel = 0;
 
-	region.imageExtent = { width, height };
+	region.imageExtent = { width, height, 1};
 	region.imageOffset = { 0, 0 };
 
 	vkCmdCopyBufferToImage(command_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
@@ -301,7 +301,7 @@ void CopyBufferToImage(const VkContext &vk_context, const Renderer &renderer, co
 	EndSingleCommandBuffer(vk_context, command_buffer, renderer.m_transfer_command_pool, vk_context.m_transfer_queue);
 }
 
-VkImageView CreateImageView(const VkContext& ctx, const VkImage& image, const VkFormat format, VkImageAspectFlags aspect_flags) {
+VkImageView CreateImageView(const VkContext& vk_context, const VkImage& image, const VkFormat format, VkImageAspectFlags aspect_flags) {
 
 	VkImageViewCreateInfo image_view_create_info{};
 	image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -316,7 +316,7 @@ VkImageView CreateImageView(const VkContext& ctx, const VkImage& image, const Vk
 	image_view_create_info.subresourceRange.baseMipLevel = 0;
 
 	VkImageView out;
-	if (vkCreateImageView(ctx.m_device, &image_view_create_info, nullptr, &out) != VK_SUCCESS) {
+	if (vkCreateImageView(vk_context.m_device, &image_view_create_info, nullptr, &out) != VK_SUCCESS) {
 		THROW_RUNTIME_ERROR("Failed to create Image View");
 	}
 
@@ -333,7 +333,7 @@ void CreateTextureImage(const VkContext& vk_context, const Renderer& renderer, c
 
 	std::string complete_path = std::string(TEXTURES_DIR) + texture_name;
 	stbi_uc* pixels = stbi_load(complete_path.c_str(), &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
-	VkDeviceSize size = tex_height * tex_width * tex_channels;
+	VkDeviceSize size = tex_height * tex_width * 4;
 
 	VkBuffer staging_buffer;
 	VkDeviceMemory staging_buffer_memory;
