@@ -357,10 +357,10 @@ namespace {
 Renderer *CreateRenderer(const VkContext& vk_context) {
 
 	const std::vector<Vertex> vertices = {
-		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+		{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+		{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+		{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+		{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
 	};
 
 	const std::vector<uint16_t> indices = {
@@ -398,6 +398,12 @@ void DestroyRenderer(const VkContext& vk_context, Renderer *renderer) {
 
 	DestroySemaphores(vk_context, renderer->m_image_available_semaphore);
 	DestroyFences(vk_context, renderer->m_in_flight_fence);
+
+	vkDestroySampler(vk_context.m_device, renderer->m_texture_sampler, nullptr);
+	vkDestroyImageView(vk_context.m_device, renderer->m_texture_image_view, nullptr);
+
+	vkDestroyImage(vk_context.m_device, renderer->m_texture_image, nullptr);
+	vkFreeMemory(vk_context.m_device, renderer->m_texture_image_memory, nullptr);
 
 	vkDestroyBuffer(vk_context.m_device, renderer->m_vertex_buffer, nullptr);
 	vkFreeMemory(vk_context.m_device, renderer->m_vertex_buffer_memory, nullptr);
