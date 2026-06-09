@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <string>
 
 #include <glfw/glfw3.h>
 
@@ -27,6 +28,9 @@ void EndSingleCommandBuffer(const VkContext& vk_context, const VkCommandBuffer& 
 //Images
 void CreateImage(const VkContext& vk_context, uint32_t width, uint32_t height, const VkFormat& format, const VkImageTiling& tilling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& image_memory);
 void TransitionImageLayout(const VkContext vk_context, const Renderer& renderer, VkImage& image, const VkFormat& format, const VkImageLayout& old_layout, const VkImageLayout& new_layout);
+void CopyBufferToImage(const VkContext& vk_context, const Renderer& renderer, const VkImage& image, VkBuffer& buffer, uint32_t width, uint32_t height);
+VkImageView CreateImageView(const VkContext& ctx, const VkImage& image, const VkFormat format, VkImageAspectFlags aspect_flags);
 
 //Textures
-void CreateTextureImage();
+void CreateTextureImage(const VkContext &vk_context, const Renderer &renderer, const std::string &texture_name, VkImage &texture, VkDeviceMemory &texture_memory);
+VkSampler CreateSampler();

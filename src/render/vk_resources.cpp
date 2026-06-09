@@ -2,8 +2,11 @@
 
 #include <sstream>
 
+#include <stb_image.h>
+
 #include <utils/debug_macro.h>
 #include <render/renderer.h>
+#include <utils/build_macro.h>
 
 #pragma region Synchronisation
 
@@ -276,11 +279,111 @@ void TransitionImageLayout(const VkContext vk_context, const Renderer &renderer,
 	EndSingleCommandBuffer(vk_context, command_buffer, renderer.m_graphics_command_pool, vk_context.m_graphics_queue);
 }
 
+void CopyBufferToImage(const VkContext &vk_context, const Renderer &renderer, const VkImage &image, VkBuffer &buffer, uint32_t width, uint32_t height)
+{
+	VkCommandBuffer command_buffer = BeginSingleCommandBuffer(vk_context, renderer.m_transfer_command_pool);
+
+	VkBufferImageCopy region{};
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.layerCount = 1;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.mipLevel = 0;
+
+	region.imageExtent = { width, height };
+	region.imageOffset = { 0, 0 };
+
+	vkCmdCopyBufferToImage(command_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+	EndSingleCommandBuffer(vk_context, command_buffer, renderer.m_transfer_command_pool, vk_context.m_transfer_queue);
+}
+
+VkImageView CreateImageView(const VkContext& ctx, const VkImage& image, const VkFormat format, VkImageAspectFlags aspect_flags) {
+
+	VkImageViewCreateInfo image_view_create_info{};
+	image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	image_view_create_info.image = image;
+	image_view_create_info.format = format;
+	image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+
+	image_view_create_info.subresourceRange.aspectMask = aspect_flags;
+	image_view_create_info.subresourceRange.layerCount = 1;
+	image_view_create_info.subresourceRange.baseArrayLayer = 0;
+	image_view_create_info.subresourceRange.levelCount = 1;
+	image_view_create_info.subresourceRange.baseMipLevel = 0;
+
+	VkImageView out;
+	if (vkCreateImageView(ctx.m_device, &image_view_create_info, nullptr, &out) != VK_SUCCESS) {
+		THROW_RUNTIME_ERROR("Failed to create Image View");
+	}
+
+	return out;
+}
+
 #pragma endregion
 
-void CreateTextureImage()
-{
+#pragma region Texture
 
+void CreateTextureImage(const VkContext& vk_context, const Renderer& renderer, const std::string& texture_name, VkImage& texture, VkDeviceMemory& texture_memory)
+{
+	int tex_width, tex_height, tex_channels;
+
+	std::string complete_path = std::string(TEXTURES_DIR) + texture_name;
+	stbi_uc* pixels = stbi_load(complete_path.c_str(), &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+	VkDeviceSize size = tex_height * tex_width * tex_channels;
+
+	VkBuffer staging_buffer;
+	VkDeviceMemory staging_buffer_memory;
+	CreateBuffer(vk_context, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, staging_buffer, staging_buffer_memory);
+
+	void* data;
+	vkMapMemory(vk_context.m_device, staging_buffer_memory, 0, size, 0, &data);
+	memcpy(data, pixels, static_cast<size_t>(size));
+	vkUnmapMemory(vk_context.m_device, staging_buffer_memory);
+
+	stbi_image_free(pixels);
+
+	CreateImage(vk_context, tex_width, tex_height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture, texture_memory);
+	TransitionImageLayout(vk_context, renderer, texture, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	CopyBufferToImage(vk_context, renderer, texture, staging_buffer, tex_width, tex_height);
+	TransitionImageLayout(vk_context, renderer, texture, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	vkDestroyBuffer(vk_context.m_device, staging_buffer, nullptr);
+	vkFreeMemory(vk_context.m_device, staging_buffer_memory, nullptr);
+}
+
+VkSampler CreateSampler(const VkContext &vk_context)
+{
+	VkPhysicalDeviceProperties properties{};
+	vkGetPhysicalDeviceProperties(vk_context.m_physical_device, &properties);
+
+	VkSamplerCreateInfo sampler_info{};
+	sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler_info.magFilter = VK_FILTER_LINEAR;
+	sampler_info.minFilter = VK_FILTER_LINEAR;
+	sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	sampler_info.anisotropyEnable = VK_TRUE;
+	sampler_info.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+	sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	sampler_info.unnormalizedCoordinates = VK_FALSE;
+	sampler_info.compareEnable = VK_FALSE;
+	sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
+	sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	sampler_info.mipLodBias = 0.0f;
+	sampler_info.minLod = 0.0f;
+	sampler_info.maxLod = 0.0f;
+
+	VkSampler out;
+	if (vkCreateSampler(vk_context.m_device, &sampler_info, nullptr, &out) != VK_SUCCESS) {
+		THROW_RUNTIME_ERROR("Failed to create sampler");
+	}
+
+	return out;
 }
 
 #pragma endregion
