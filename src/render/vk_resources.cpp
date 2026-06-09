@@ -1,6 +1,9 @@
 #include "vk_resources.h"
 
+#include <sstream>
+
 #include <utils/debug_macro.h>
+#include <render/renderer.h>
 
 #pragma region Synchronisation
 
@@ -56,8 +59,6 @@ void DestroyFences(const VkContext& vk_context, std::vector<VkFence> &fences)
 }
 
 #pragma endregion
-
-#pragma region Buffers
 
 #pragma region Memory & Buffer
 
@@ -127,8 +128,6 @@ void CopyBuffer(const VkContext& vk_context, const VkCommandPool& command_pool, 
 
 #pragma endregion
 
-#pragma endregion
-
 #pragma region Command Buffers
 
 VkCommandPool CreateCommandPool(const VkContext& vk_context, uint32_t queue_family_index, VkCommandPoolCreateFlagBits flags)
@@ -188,6 +187,100 @@ void EndSingleCommandBuffer(const VkContext& vk_context, const VkCommandBuffer& 
 	vkQueueWaitIdle(queue);
 
 	vkFreeCommandBuffers(vk_context.m_device, command_pool, 1, &command_buffer);
+}
+
+#pragma endregion
+
+#pragma region Image
+
+void CreateImage(const VkContext &vk_context, uint32_t width, uint32_t height, const VkFormat &format, const VkImageTiling &tilling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &image_memory)
+{
+	VkImageCreateInfo image_info{};
+	image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	image_info.imageType = VK_IMAGE_TYPE_2D;
+	image_info.extent.width = width;
+	image_info.extent.height = height;
+	image_info.extent.depth = 1;
+	image_info.mipLevels = 1;
+	image_info.arrayLayers = 1;
+	image_info.format = format;
+	image_info.tiling = tilling;
+	image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	image_info.usage = usage;
+	image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+	image_info.flags = 0;
+
+	if (vkCreateImage(vk_context.m_device, &image_info, nullptr, &image) != VK_SUCCESS) {
+		THROW_RUNTIME_ERROR("Failed to create Image");
+	}
+
+	VkMemoryRequirements mem_requirements;
+	vkGetImageMemoryRequirements(vk_context.m_device, image, &mem_requirements);
+
+	VkMemoryAllocateInfo alloc_info{};
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.allocationSize = mem_requirements.size;
+	alloc_info.memoryTypeIndex = FindMemoryType(vk_context, mem_requirements.memoryTypeBits, properties);
+
+	if (vkAllocateMemory(vk_context.m_device, &alloc_info, nullptr, &image_memory) != VK_SUCCESS) {
+		THROW_RUNTIME_ERROR("Failed to allocate image memory");
+	}
+
+	vkBindImageMemory(vk_context.m_device, image, image_memory, 0);
+}
+
+void TransitionImageLayout(const VkContext vk_context, const Renderer &renderer, VkImage& image, const VkFormat& format, const VkImageLayout& old_layout, const VkImageLayout& new_layout)
+{
+	VkCommandBuffer command_buffer = BeginSingleCommandBuffer(vk_context, renderer.m_graphics_command_pool);
+
+	VkImageMemoryBarrier barrier{};
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.image = image;
+	barrier.newLayout = new_layout;
+	barrier.oldLayout = old_layout;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = 0;
+
+	VkPipelineStageFlags src_stage{};
+	VkPipelineStageFlags dst_stage{};
+
+	if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+		src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		dst_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL  && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL){
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		dst_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	} 
+	else {
+		std::stringstream s_msg;
+		s_msg << "old_layout " << old_layout << " to new layout " << new_layout << " transition is not supported.";
+		THROW_INVALID_ARGUMENT(s_msg.str())
+	}
+
+	vkCmdPipelineBarrier(command_buffer, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+	EndSingleCommandBuffer(vk_context, command_buffer, renderer.m_graphics_command_pool, vk_context.m_graphics_queue);
+}
+
+#pragma endregion
+
+void CreateTextureImage()
+{
+
 }
 
 #pragma endregion
