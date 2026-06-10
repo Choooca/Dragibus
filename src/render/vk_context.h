@@ -30,6 +30,8 @@ struct VkContext {
 	VkQueue m_present_queue;
 
 	VkSurfaceFormatKHR m_swap_chain_image_format;
+
+	VkFormat m_depth_format;
 };
 
 VkContext *CreateContext(GLFWwindow *window);

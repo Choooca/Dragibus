@@ -279,6 +279,32 @@ namespace {
 		return image_format;
 	}
 
+	VkFormat FindSupportedFormat(const VkContext& vk_context, const std::vector<VkFormat> candidates, const VkImageTiling& tiling, const VkFormatFeatureFlags& features) {
+
+		for (const VkFormat& format : candidates) {
+			VkFormatProperties properties;
+			vkGetPhysicalDeviceFormatProperties(vk_context.m_physical_device, format, &properties);
+
+			if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features) {
+				return format;
+			}
+			else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features) {
+				return format;
+			}
+		}
+
+		THROW_RUNTIME_ERROR("Failed to find supported format");
+	}
+
+	VkFormat FindDepthFormat(const VkContext& vk_context) {
+		return FindSupportedFormat(
+			vk_context,
+			{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+		);
+	}
+
 #pragma endregion
 
 }
@@ -330,7 +356,8 @@ VkContext *CreateContext(GLFWwindow* window)
 	out->m_surface = CreateSurface(out->m_instance, out->m_window);
 	out->m_physical_device = PickPhysicalDevice(out->m_instance, out->m_surface, device_extensions, out->m_indices);
 	out->m_device = CreateLogicalDevice(out->m_physical_device, out->m_indices, device_extensions, validation_layers);
-	
+	out->m_depth_format = FindDepthFormat(*out);
+
 	vkGetDeviceQueue(out->m_device, out->m_indices.graphics_family.value(), 0, &out->m_graphics_queue);
 	vkGetDeviceQueue(out->m_device, out->m_indices.present_family.value(), 0, &out->m_present_queue);
 	vkGetDeviceQueue(out->m_device, out->m_indices.transfer_family.value(), 0, &out->m_transfer_queue);

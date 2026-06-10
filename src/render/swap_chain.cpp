@@ -9,7 +9,9 @@
 #include <utils/files.h>
 #include <utils/build_macro.h>
 #include <render/primitives.h>
+#include <render/renderer.h>
 #include <render/vk_resources.h>
+#include <render/renderer.h>
 
 namespace {
 
@@ -56,7 +58,7 @@ namespace {
 
 		const VkSurfaceCapabilitiesKHR& capabilities = swap_chain_support_details.capabilities;
 
-		uint32_t image_count = capabilities.minImageCount;
+		uint32_t image_count = capabilities.minImageCount + 1;
 		if (capabilities.maxImageCount > 0 && capabilities.maxImageCount < image_count) {
 			image_count = capabilities.maxImageCount;
 		}
@@ -129,6 +131,10 @@ namespace {
 			vkDestroyImageView(vk_context.m_device, image_view, nullptr);
 		}
 
+		vkDestroyImageView(vk_context.m_device, swap_chain.m_depth_image_view, nullptr);
+		vkDestroyImage(vk_context.m_device, swap_chain.m_depth_image, nullptr);
+		vkFreeMemory(vk_context.m_device, swap_chain.m_depth_image_memory, nullptr);
+
 		vkDestroySwapchainKHR(vk_context.m_device, swap_chain.m_swap_chain, nullptr);
 	}
 
@@ -137,7 +143,7 @@ namespace {
 #pragma region Frambuffer
 
 	void FramebufferResizedCallback(GLFWwindow* window, int width, int height) {
-		SwapChain* swap_chain = reinterpret_cast<SwapChain*>(window);
+		SwapChain* swap_chain = reinterpret_cast<SwapChain*>(glfwGetWindowUserPointer(window));
 		swap_chain->m_frame_buffer_resized = true;
 	}
 
@@ -147,14 +153,15 @@ namespace {
 
 #pragma region Framebuffer
 
-std::vector<VkFramebuffer> CreateFramebuffer(const VkContext& vk_context, const SwapChain& swap_chain, const VkRenderPass& render_pass) {
+std::vector<VkFramebuffer> CreateFramebuffer(const VkContext& vk_context, const SwapChain& swap_chain, const VkImageView &depth_image_view, const VkRenderPass& render_pass) {
 
 	size_t size = swap_chain.m_swap_chain_image_views.size();
 	std::vector<VkFramebuffer> framebuffers(size);
 
 	for (size_t i = 0; i < size; i++) {
-		std::array<VkImageView, 1> attachments{
-			swap_chain.m_swap_chain_image_views[i]
+		std::array<VkImageView, 2> attachments{
+			swap_chain.m_swap_chain_image_views[i],
+			depth_image_view
 		};
 
 		VkFramebufferCreateInfo framebuffer_info{};
@@ -205,7 +212,7 @@ void DestroySwapChain(const VkContext &vk_context, SwapChain *swap_chain) {
 	delete swap_chain;
 }
 
-void RecreateSwapChain(const VkContext& vk_context, SwapChain &swap_chain, const VkRenderPass &render_pass) {
+void RecreateSwapChain(const VkContext& vk_context, const Renderer &renderer, SwapChain &swap_chain) {
 
 	int width = 0, height = 0;
 	glfwGetFramebufferSize(vk_context.m_window, &width, &height);
@@ -223,7 +230,18 @@ void RecreateSwapChain(const VkContext& vk_context, SwapChain &swap_chain, const
 	swap_chain.m_swap_chain = CreateSwapChainHandle(vk_context, swap_chain.m_swap_chain_extent, swap_chain.m_swap_chain_present_mode, swap_chain_support_details);
 	swap_chain.m_swap_chain_images = RetrieveSwapChainImage(vk_context, swap_chain.m_swap_chain);
 	swap_chain.m_swap_chain_image_views = CreateSwapChainImageViews(vk_context, swap_chain.m_swap_chain_images);
-	swap_chain.m_framebuffers = CreateFramebuffer(vk_context, swap_chain, render_pass);
+	CreateDepthResources(vk_context, renderer, swap_chain.m_swap_chain_extent, swap_chain.m_depth_image, swap_chain.m_depth_image_view, swap_chain.m_depth_image_memory);
+	swap_chain.m_framebuffers = CreateFramebuffer(vk_context, swap_chain, swap_chain.m_depth_image_view, renderer.m_render_pass);
+}
+
+#pragma endregion
+
+#pragma region Depth
+
+void CreateDepthResources(const VkContext& vk_context, const Renderer& renderer, const VkExtent2D extent, VkImage& image, VkImageView& image_view, VkDeviceMemory& image_memory) {
+	CreateImage(vk_context, extent.width, extent.height, vk_context.m_depth_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, image_memory);
+	image_view = CreateImageView(vk_context, image, vk_context.m_depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
+	TransitionImageLayout(vk_context, renderer, image, vk_context.m_depth_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
 #pragma endregion

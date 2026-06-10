@@ -71,7 +71,7 @@ void CreatePrimitiveBuffer(const VkContext vk_context, const VkCommandPool& comm
 	memcpy(data, primitive_data.data(), buffer_size);
 	vkUnmapMemory(vk_context.m_device, staging_buffer_memory);
 
-	CreateBuffer(vk_context, buffer_size, VK_IMAGE_USAGE_TRANSFER_DST_BIT | buffer_usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, device_memory);
+	CreateBuffer(vk_context, buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | buffer_usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer, device_memory);
 
 	CopyBuffer(vk_context, command_pool, staging_buffer, buffer, buffer_size);
 

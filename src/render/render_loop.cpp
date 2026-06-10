@@ -15,7 +15,7 @@
 
 namespace {
 
-	void RecordCommandBuffer(const VkContext &vk_context, const SwapChain &swap_chain, const Renderer &renderer, const VkCommandBuffer &command_buffer, uint32_t current_frame) {
+	void RecordCommandBuffer(const VkContext &vk_context, const SwapChain &swap_chain, const Renderer &renderer, const VkCommandBuffer &command_buffer, uint32_t current_frame, uint32_t image_index) {
 
 		VkCommandBufferBeginInfo command_begin_info{};
 		command_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -26,16 +26,17 @@ namespace {
 			THROW_RUNTIME_ERROR("Failed to begin command buffer.");
 		}
 
-		std::array<VkClearValue, 1> clear_values{};
+		std::array<VkClearValue, 2> clear_values{};
 		clear_values[0].color = { 0, 0, 0 };
+		clear_values[1].depthStencil = { 1.0f, 0 };
 
 		VkRenderPassBeginInfo render_begin_info{};
 		render_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		render_begin_info.framebuffer = swap_chain.m_framebuffers[current_frame];
+		render_begin_info.framebuffer = swap_chain.m_framebuffers[image_index];
 		render_begin_info.renderPass = renderer.m_render_pass;
 		render_begin_info.renderArea.extent = swap_chain.m_swap_chain_extent;
 		render_begin_info.renderArea.offset = { 0, 0 };
-		render_begin_info.clearValueCount = 1;
+		render_begin_info.clearValueCount = clear_values.size();
 		render_begin_info.pClearValues = clear_values.data();
 
 		vkCmdBeginRenderPass(command_buffer, &render_begin_info, VK_SUBPASS_CONTENTS_INLINE);
@@ -61,7 +62,7 @@ namespace {
 		vkCmdSetScissor(command_buffer, 0, 1, &scissors);
 
 		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderer.m_pipeline_layout, 0, 1, &renderer.m_descriptor_sets[current_frame], 0, nullptr);
-		vkCmdDrawIndexed(command_buffer, 6, 1, 0, 0, 0);
+		vkCmdDrawIndexed(command_buffer, 12, 1, 0, 0, 0);
 		vkCmdEndRenderPass(command_buffer);
 
 		vkEndCommandBuffer(command_buffer);
@@ -93,7 +94,7 @@ void DrawFrame(const VkContext& vk_context, SwapChain& swap_chain, Renderer& ren
 	VkResult result = vkAcquireNextImageKHR(vk_context.m_device, swap_chain.m_swap_chain, UINT64_MAX, renderer.m_image_available_semaphore[renderer.m_current_frame], VK_NULL_HANDLE, &image_index);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		RecreateSwapChain(vk_context, swap_chain, renderer.m_render_pass);
+		RecreateSwapChain(vk_context, renderer, swap_chain);
 		return;
 	}
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
@@ -103,7 +104,7 @@ void DrawFrame(const VkContext& vk_context, SwapChain& swap_chain, Renderer& ren
 	vkResetFences(vk_context.m_device, 1, &renderer.m_in_flight_fence[renderer.m_current_frame]);
 
 	vkResetCommandBuffer(renderer.m_graphics_command_buffer[renderer.m_current_frame], 0);
-	RecordCommandBuffer(vk_context, swap_chain, renderer, renderer.m_graphics_command_buffer[renderer.m_current_frame], image_index);
+	RecordCommandBuffer(vk_context, swap_chain, renderer, renderer.m_graphics_command_buffer[renderer.m_current_frame], renderer.m_current_frame, image_index);
 
 	UpdateUniformBuffer(renderer, swap_chain, renderer.m_current_frame);
 
@@ -140,7 +141,7 @@ void DrawFrame(const VkContext& vk_context, SwapChain& swap_chain, Renderer& ren
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || swap_chain.m_frame_buffer_resized) {
 		swap_chain.m_frame_buffer_resized = false;
-		RecreateSwapChain(vk_context, swap_chain, renderer.m_render_pass);
+		RecreateSwapChain(vk_context, renderer, swap_chain);
 	}
 	else if (result != VK_SUCCESS){
 		THROW_RUNTIME_ERROR("Failed to present swap chain image");
