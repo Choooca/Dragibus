@@ -20,8 +20,7 @@ target_link_libraries(Dragibus
 		deps
 )
 
-target_compile_definitions(Dragibus PRIVATE GLFW_INCLUDE_VULKAN STB_IMAGE_IMPLEMENTATION)
-
+target_compile_definitions(Dragibus PRIVATE GLFW_INCLUDE_VULKAN STB_IMAGE_IMPLEMENTATION VULKAN_HPP_NO_SPACESHIP_OPERATOR)
 target_include_directories(
 	Dragibus
 	PRIVATE
