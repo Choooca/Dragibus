@@ -1,4 +1,7 @@
 #include "descriptor_set_layout.h"
+
+#include <array>
+
 #include <utils/debug_macro.h>
 #include <render/rhi/vulkan/renderer.h>
 

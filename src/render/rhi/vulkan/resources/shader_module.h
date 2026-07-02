@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan.h>
 
 namespace Vulkan {
 

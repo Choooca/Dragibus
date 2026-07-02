@@ -1,6 +1,9 @@
 #pragma once
 
-#include <vulkan/vulkan.hpp>
+#include <memory>
+#include <string>
+
+#include <vulkan/vulkan.h>
 
 namespace Vulkan {
 
@@ -25,7 +28,6 @@ namespace Vulkan {
 
 		std::unique_ptr<Image> m_image;
 		std::unique_ptr<DeviceMemory> m_device_memory;
-
 	};
 
 }

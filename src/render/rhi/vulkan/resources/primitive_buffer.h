@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan.h>
 
 #include <render/rhi/vulkan/resources/buffer.h>
 #include <render/rhi/vulkan/resources/device_memory.h>
