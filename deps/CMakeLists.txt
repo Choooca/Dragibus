@@ -27,6 +27,7 @@ IncludeDependency(vulkanheaders https://github.com/KhronosGroup/Vulkan-Headers.g
 IncludeDependency(vulkanhpp https://github.com/KhronosGroup/Vulkan-Hpp.git v${VULKAN_VERSION} "")
 IncludeDependency(glm https://github.com/g-truc/glm.git 1.0.3 "")
 IncludeDependency(spdlog https://github.com/gabime/spdlog.git v1.17.0 "")
+IncludeDependency(tinygltf https://github.com/syoyo/tinygltf.git release "")
 
 #I don't include stb with IncludeDependency because outside the function the first parameter doesn't seem to be a target.
 message(STATUS "include stb_image")
@@ -46,4 +47,4 @@ target_include_directories(deps INTERFACE ${vulkanhpp_SOURCE_DIR})
 target_include_directories(deps INTERFACE ${stb_SOURCE_DIR})
 
 find_package(Vulkan REQUIRED)
-target_link_libraries(deps INTERFACE stb Vulkan::Headers Vulkan::Vulkan glfw glm::glm spdlog::spdlog)
+target_link_libraries(deps INTERFACE stb Vulkan::Headers Vulkan::Vulkan glfw glm::glm spdlog::spdlog tinygltf)
