@@ -39,7 +39,7 @@ Vulkan::GraphicsPipeline::GraphicsPipeline(Renderer* renderer, const std::string
 	dynamic_state_info.pDynamicStates = dynamic_state.data();
 
 	VkVertexInputBindingDescription binding_description = Vertex::GetBindingDescription();
-	std::array<VkVertexInputAttributeDescription, 3> attributes_descriptions = Vertex::GetVertexInputAttributeDescription();
+	std::array<VkVertexInputAttributeDescription, 4> attributes_descriptions = Vertex::GetVertexInputAttributeDescription();
 
 	VkPipelineVertexInputStateCreateInfo vertex_input_info{};
 	vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

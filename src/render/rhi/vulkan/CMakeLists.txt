@@ -6,7 +6,6 @@ add_subdirectory(resources)
 target_sources(Dragibus
 	PRIVATE
 		renderer.cpp
-		render_loop.cpp
 		swap_chain_resources.cpp
 		frame_resources.cpp
 )
