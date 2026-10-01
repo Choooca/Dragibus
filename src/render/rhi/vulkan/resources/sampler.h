@@ -17,8 +17,8 @@ namespace Vulkan {
 
 	private:
 
-		VkSampler m_sampler;
-		Renderer* m_renderer;
+		VkSampler _sampler;
+		Renderer* _renderer;
 
 	};
 

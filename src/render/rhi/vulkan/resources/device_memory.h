@@ -17,8 +17,8 @@ namespace Vulkan {
 
 	private:
 
-		Renderer* m_renderer;
-		VkDeviceMemory m_device_memory;
+		Renderer* _renderer;
+		VkDeviceMemory _device_memory;
 
 		uint32_t FindMemoryType(const VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties);
 	};

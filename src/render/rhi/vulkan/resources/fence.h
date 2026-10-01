@@ -17,8 +17,8 @@ namespace Vulkan {
 
 	private:
 
-		VkFence m_fence;
-		Renderer* m_renderer;
+		VkFence _fence;
+		Renderer* _renderer;
 	};
 
 }

@@ -3,7 +3,7 @@
 #include <render/rhi/vulkan/renderer.h>
 
 Vulkan::ImageView::ImageView(Renderer* renderer, const VkImage& image, const VkFormat& format, const VkImageAspectFlags& aspect_flags)
-	: m_renderer(renderer)
+	: _renderer(renderer)
 {
 	VkImageViewCreateInfo image_view_create_info{};
 	image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -17,17 +17,17 @@ Vulkan::ImageView::ImageView(Renderer* renderer, const VkImage& image, const VkF
 	image_view_create_info.subresourceRange.levelCount = 1;
 	image_view_create_info.subresourceRange.baseMipLevel = 0;
 
-	if (vkCreateImageView(m_renderer->GetDevice(), &image_view_create_info, nullptr, &m_image_view) != VK_SUCCESS) {
+	if (vkCreateImageView(_renderer->GetDevice(), &image_view_create_info, nullptr, &_image_view) != VK_SUCCESS) {
 		THROW_RUNTIME_ERROR("Failed to create Image View");
 	}
 }
 
 Vulkan::ImageView::~ImageView()
 {
-	vkDestroyImageView(m_renderer->GetDevice(), m_image_view, nullptr);
+	vkDestroyImageView(_renderer->GetDevice(), _image_view, nullptr);
 }
 
 VkImageView Vulkan::ImageView::Get()
 {
-	return m_image_view;
+	return _image_view;
 }

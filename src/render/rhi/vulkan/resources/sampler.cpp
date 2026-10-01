@@ -3,10 +3,10 @@
 #include <render/rhi/vulkan/renderer.h>
 
 Vulkan::Sampler::Sampler(Renderer* renderer)
-	: m_renderer(renderer)
+	: _renderer(renderer)
 {
 	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(m_renderer->GetPhysicalDevice(), &properties);
+	vkGetPhysicalDeviceProperties(_renderer->GetPhysicalDevice(), &properties);
 
 	VkSamplerCreateInfo sampler_info{};
 	sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -26,17 +26,17 @@ Vulkan::Sampler::Sampler(Renderer* renderer)
 	sampler_info.minLod = 0.0f;
 	sampler_info.maxLod = 0.0f;
 
-	if (vkCreateSampler(m_renderer->GetDevice(), &sampler_info, nullptr, &m_sampler) != VK_SUCCESS) {
+	if (vkCreateSampler(_renderer->GetDevice(), &sampler_info, nullptr, &_sampler) != VK_SUCCESS) {
 		THROW_RUNTIME_ERROR("Failed to create sampler");
 	}
 }
 
 Vulkan::Sampler::~Sampler()
 {
-	vkDestroySampler(m_renderer->GetDevice(), m_sampler, nullptr);
+	vkDestroySampler(_renderer->GetDevice(), _sampler, nullptr);
 }
 
 VkSampler Vulkan::Sampler::Get()
 {
-	return m_sampler;
+	return _sampler;
 }

@@ -3,26 +3,26 @@
 #include <render/rhi/vulkan/renderer.h>
 
 Vulkan::DeviceMemory::DeviceMemory(Renderer* renderer, const VkMemoryRequirements& mem_requirements, const VkMemoryPropertyFlags& properties)
-	: m_renderer(renderer)
+	: _renderer(renderer)
 {
 	VkMemoryAllocateInfo alloc_info{};
 	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	alloc_info.allocationSize = mem_requirements.size;
-	alloc_info.memoryTypeIndex = FindMemoryType(m_renderer->GetPhysicalDevice(), mem_requirements.memoryTypeBits, properties);
+	alloc_info.memoryTypeIndex = FindMemoryType(_renderer->GetPhysicalDevice(), mem_requirements.memoryTypeBits, properties);
 
-	if (vkAllocateMemory(m_renderer->GetDevice(), &alloc_info, nullptr, &m_device_memory) != VK_SUCCESS) {
+	if (vkAllocateMemory(_renderer->GetDevice(), &alloc_info, nullptr, &_device_memory) != VK_SUCCESS) {
 		THROW_RUNTIME_ERROR("Failed to allocate buffer memory")
 	}
 }
 
 Vulkan::DeviceMemory::~DeviceMemory()
 {
-	vkFreeMemory(m_renderer->GetDevice(), m_device_memory, nullptr);
+	vkFreeMemory(_renderer->GetDevice(), _device_memory, nullptr);
 }
 
 VkDeviceMemory Vulkan::DeviceMemory::Get()
 {
-	return m_device_memory;
+	return _device_memory;
 }
 
 uint32_t Vulkan::DeviceMemory::FindMemoryType(const VkPhysicalDevice physical_device, uint32_t type_filter, VkMemoryPropertyFlags properties)

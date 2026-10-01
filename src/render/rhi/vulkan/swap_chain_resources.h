@@ -28,27 +28,27 @@ namespace Vulkan {
 		int GetSwapChainImageCount();
 		VkExtent2D GetSwapchainExtent();
 
-		bool m_frame_buffer_resized = false;
+		bool _frame_buffer_resized = false;
 
 		VkSwapchainKHR GetSwapchain();
 		VkFramebuffer GetFramebuffer(int swap_chain_index);
 
 	private:
 
-		Renderer* m_renderer;
+		Renderer* _renderer;
 
-		VkPresentModeKHR m_present_mode;
-		VkExtent2D m_extent;
+		VkPresentModeKHR _present_mode;
+		VkExtent2D _extent;
 
-		std::unique_ptr<SwapChain> m_swap_chain;
-		std::vector<VkImage> m_images;
-		std::vector<ImageView> m_image_views;
-		std::unique_ptr<Image> m_depth_image;
-		std::unique_ptr<DeviceMemory> m_depth_image_memory;
-		std::unique_ptr<ImageView> m_depth_image_view;
-		std::vector<Framebuffer> m_framebuffers;
+		std::unique_ptr<SwapChain> _swap_chain;
+		std::vector<VkImage> _images;
+		std::vector<ImageView> _image_views;
+		std::unique_ptr<Image> _depth_image;
+		std::unique_ptr<DeviceMemory> _depth_image_memory;
+		std::unique_ptr<ImageView> _depth_image_view;
+		std::vector<Framebuffer> _framebuffers;
 
-		int m_swap_chain_image_count;
+		int _swap_chain_image_count;
 
 		VkPresentModeKHR ChooseSwapChainPresentMode(const SwapChainSupportDetails& swap_chain_support_details);
 		VkExtent2D GetSwapChainExtent(const SwapChainSupportDetails& swap_chain_support_details);

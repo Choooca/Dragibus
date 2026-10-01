@@ -11,15 +11,15 @@ GLTFModel::GLTFModel(const std::string& model_name) {
 
 	const std::string& model_path = std::string(MODELS_DIR) + model_name;
 
-	tg3_parse_options_init(&m_options);
-	tg3_error_stack_init(&m_errors);
-	tg3_error_code err = tg3_parse_file(&_model, &m_errors, model_path.data(), model_path.length(), &m_options);
+	tg3_parse_options_init(&_options);
+	tg3_error_stack_init(&_errors);
+	tg3_error_code err = tg3_parse_file(&_model, &_errors, model_path.data(), model_path.length(), &_options);
 	if (err != TG3_OK) {
 
 		std::stringstream msg;
 
-		for (uint32_t i = 0; i < m_errors.count; i++) {
-			msg << (int)m_errors.entries[i].severity << " " << (m_errors.entries[i].message ? m_errors.entries[i].message : "(null)") << "\n";
+		for (uint32_t i = 0; i < _errors.count; i++) {
+			msg << (int)_errors.entries[i].severity << " " << (_errors.entries[i].message ? _errors.entries[i].message : "(null)") << "\n";
 		}
 
 		PRINT_RUNTIME_ERROR(msg.str());
@@ -34,7 +34,7 @@ GLTFModel::GLTFModel(const std::string& model_name) {
 
 GLTFModel::~GLTFModel() {
 	tg3_model_free(&_model);
-	tg3_error_stack_free(&m_errors);
+	tg3_error_stack_free(&_errors);
 }
 
 std::vector<Mesh> &&GLTFModel::GetMeshes()

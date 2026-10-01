@@ -17,7 +17,7 @@ namespace Vulkan {
 
 	private:
 
-		VkRenderPass m_render_pass;
-		Renderer *m_renderer;
+		VkRenderPass _render_pass;
+		Renderer *_renderer;
 	};
 }

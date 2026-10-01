@@ -7,7 +7,7 @@
 #include <render/rhi/vulkan/renderer.h>
 
 Vulkan::Image::Image(Renderer* renderer, uint32_t width, uint32_t height, const VkFormat& format, const VkImageTiling& tilling, VkImageUsageFlags usage)
-	: m_renderer(renderer)
+	: _renderer(renderer)
 {
 	VkImageCreateInfo image_info{};
 	image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -25,19 +25,19 @@ Vulkan::Image::Image(Renderer* renderer, uint32_t width, uint32_t height, const 
 	image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 	image_info.flags = 0;
 
-	if (vkCreateImage(m_renderer->GetDevice(), &image_info, nullptr, &m_image) != VK_SUCCESS) {
+	if (vkCreateImage(_renderer->GetDevice(), &image_info, nullptr, &_image) != VK_SUCCESS) {
 		THROW_RUNTIME_ERROR("Failed to create Image");
 	}
 }
 
 Vulkan::Image::~Image()
 {
-	vkDestroyImage(m_renderer->GetDevice(), m_image, nullptr);
+	vkDestroyImage(_renderer->GetDevice(), _image, nullptr);
 }
 
 VkImage Vulkan::Image::Get()
 {
-	return m_image;
+	return _image;
 }
 
 bool Vulkan::Image::HasStencilComponent(const VkFormat& format)
@@ -58,7 +58,7 @@ void Vulkan::Image::TransitionImageLayout(CommandPool *command_pool, const VkQue
 
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.image = m_image;
+	barrier.image = _image;
 	barrier.newLayout = new_layout;
 	barrier.oldLayout = old_layout;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -131,7 +131,7 @@ void Vulkan::Image::TransitionImageLayout(CommandPool *command_pool, const VkQue
 void Vulkan::Image::CopyBufferToImage(const VkBuffer& buffer, uint32_t width, uint32_t height)
 {
 	const std::string command_buffer_key = "buffer_to_image";
-	VkCommandBuffer command_buffer = m_renderer->GetTransferCommandPool()->CreateCommandBufferGroup(1, command_buffer_key)[0];
+	VkCommandBuffer command_buffer = _renderer->GetTransferCommandPool()->CreateCommandBufferGroup(1, command_buffer_key)[0];
 
 	VkCommandBufferBeginInfo begin_info{};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -152,7 +152,7 @@ void Vulkan::Image::CopyBufferToImage(const VkBuffer& buffer, uint32_t width, ui
 	region.imageExtent = { width, height, 1 };
 	region.imageOffset = { 0, 0 };
 
-	vkCmdCopyBufferToImage(command_buffer, buffer, m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	vkCmdCopyBufferToImage(command_buffer, buffer, _image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 	vkEndCommandBuffer(command_buffer);
 
@@ -161,8 +161,8 @@ void Vulkan::Image::CopyBufferToImage(const VkBuffer& buffer, uint32_t width, ui
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &command_buffer;
 
-	vkQueueSubmit(m_renderer->GetTransferQueue(), 1, &submit_info, VK_NULL_HANDLE);
-	vkQueueWaitIdle(m_renderer->GetTransferQueue());
+	vkQueueSubmit(_renderer->GetTransferQueue(), 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueWaitIdle(_renderer->GetTransferQueue());
 
-	m_renderer->GetTransferCommandPool()->DestroyCommandBufferGroup(command_buffer_key);
+	_renderer->GetTransferCommandPool()->DestroyCommandBufferGroup(command_buffer_key);
 }

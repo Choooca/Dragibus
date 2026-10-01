@@ -19,7 +19,7 @@ namespace Vulkan {
 
 	private:
 
-		VkBuffer m_buffer;
-		Renderer* m_renderer;
+		VkBuffer _buffer;
+		Renderer* _renderer;
 	};
 }

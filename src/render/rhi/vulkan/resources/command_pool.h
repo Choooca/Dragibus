@@ -25,10 +25,10 @@ namespace Vulkan {
 
 	private:
 
-		VkCommandPool m_command_pool;
-		VkDevice* m_device;
+		VkCommandPool _command_pool;
+		VkDevice* _device;
 
-		std::map<std::string ,std::vector<VkCommandBuffer>> m_command_buffers_groups;
+		std::map<std::string ,std::vector<VkCommandBuffer>> _command_buffers_groups;
 
 	};
 

@@ -68,44 +68,44 @@ namespace Vulkan {
 
 		void AddScene(const std::vector<Mesh>& meshes);
 
-		bool m_frame_buffer_resized = false;
+		bool _frame_buffer_resized = false;
 
 	private:
 
-		uint32_t m_current_frame = 0;
+		uint32_t _current_frame = 0;
 
-		GLFWwindow* m_window;
+		GLFWwindow* _window;
 
-		const std::vector<const char*> m_validation_layers{ "VK_LAYER_KHRONOS_validation" };
-		std::vector<const char*> m_extensions;
-		const std::vector<const char*> m_device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+		const std::vector<const char*> _validation_layers{ "VK_LAYER_KHRONOS_validation" };
+		std::vector<const char*> _extensions;
+		const std::vector<const char*> _device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-		VkDebugUtilsMessengerCreateInfoEXT m_debug_info;
+		VkDebugUtilsMessengerCreateInfoEXT _debug_info;
 
-		std::unique_ptr<Instance> m_instance;
-		std::unique_ptr<DebugMessenger> m_debug_messenger;
-		std::unique_ptr<Surface> m_surface;
-		VkPhysicalDevice m_physical_device;
-		QueueFamilyIndices m_queue_family_indices;
-		std::unique_ptr<Device> m_device;
-		VkFormat m_depth_format;
-		VkQueue m_graphics_queue;
-		VkQueue m_transfer_queue;
-		VkQueue m_present_queue;
-		VkSurfaceFormatKHR m_surface_format;
-		std::unique_ptr<CommandPool> m_graphics_command_pool;
-		std::unique_ptr<CommandPool> m_transfer_command_pool;
-		std::unique_ptr<SwapChainResources> m_swap_chain_ressources;
-		std::unique_ptr<RenderPass> m_render_pass;
-		std::unique_ptr<DescriptorSetLayout> m_descriptor_set_layout;
-		std::unique_ptr<GraphicsPipeline> m_graphics_pipeline;
-		std::unique_ptr<PrimitiveBuffer> m_vertex_buffer;
-		std::unique_ptr<PrimitiveBuffer> m_index_buffer;
-		std::unique_ptr<Texture> m_texture;
-		std::unique_ptr<ImageView> m_texture_view;
-		std::unique_ptr<Sampler> m_sampler;
-		std::unique_ptr<FrameResources> m_frame_resources;
-		std::vector<Semaphore> m_render_finish_semaphore;
+		std::unique_ptr<Instance> _instance;
+		std::unique_ptr<DebugMessenger> _debug_messenger;
+		std::unique_ptr<Surface> _surface;
+		VkPhysicalDevice _physical_device;
+		QueueFamilyIndices _queue_family_indices;
+		std::unique_ptr<Device> _device;
+		VkFormat _depth_format;
+		VkQueue _graphics_queue;
+		VkQueue _transfer_queue;
+		VkQueue _present_queue;
+		VkSurfaceFormatKHR _surface_format;
+		std::unique_ptr<CommandPool> _graphics_command_pool;
+		std::unique_ptr<CommandPool> _transfer_command_pool;
+		std::unique_ptr<SwapChainResources> _swap_chain_ressources;
+		std::unique_ptr<RenderPass> _render_pass;
+		std::unique_ptr<DescriptorSetLayout> _descriptor_set_layout;
+		std::unique_ptr<GraphicsPipeline> _graphics_pipeline;
+		std::unique_ptr<PrimitiveBuffer> _vertex_buffer;
+		std::unique_ptr<PrimitiveBuffer> _index_buffer;
+		std::unique_ptr<Texture> _texture;
+		std::unique_ptr<ImageView> _texture_view;
+		std::unique_ptr<Sampler> _sampler;
+		std::unique_ptr<FrameResources> _frame_resources;
+		std::vector<Semaphore> _render_finish_semaphore;
 
 		std::vector<GPUPrimitive> _gpu_primitives;
 

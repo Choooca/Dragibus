@@ -16,8 +16,8 @@ public:
 
 private :
 
-	tg3_parse_options m_options;
-	tg3_error_stack m_errors;
+	tg3_parse_options _options;
+	tg3_error_stack _errors;
 	tg3_model _model;
 
 	std::vector<class Mesh> _meshes;

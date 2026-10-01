@@ -19,7 +19,7 @@ namespace Vulkan {
 
 	private:
 
-		VkDevice m_device = VK_NULL_HANDLE;
+		VkDevice _device = VK_NULL_HANDLE;
 	};
 
 }

@@ -16,37 +16,37 @@
 #include <render/rhi/vulkan/handles/render_pass.h>
 
 Vulkan::SwapChainResources::SwapChainResources(Renderer* renderer)
-	: m_renderer(renderer)
+	: _renderer(renderer)
 {
 	SwapChainSupportDetails swap_chain_support_details = renderer->GetSwapChainSupportDetails(renderer->GetPhysicalDevice(), renderer->GetSurface());
-	m_present_mode = ChooseSwapChainPresentMode(swap_chain_support_details);
-	m_extent = GetSwapChainExtent(swap_chain_support_details);
-	m_swap_chain = std::make_unique<SwapChain>(renderer, m_extent, m_present_mode, swap_chain_support_details);
-	m_images = RetrieveSwapChainImage(m_swap_chain->Get());
-	m_swap_chain_image_count = m_images.size();
-	m_image_views = CreateSwapChainImageViews(m_images, VK_IMAGE_ASPECT_COLOR_BIT);
-	m_depth_image = std::make_unique<Image>(renderer, m_extent.width, m_extent.height, renderer->GetDepthFormat(), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	_present_mode = ChooseSwapChainPresentMode(swap_chain_support_details);
+	_extent = GetSwapChainExtent(swap_chain_support_details);
+	_swap_chain = std::make_unique<SwapChain>(renderer, _extent, _present_mode, swap_chain_support_details);
+	_images = RetrieveSwapChainImage(_swap_chain->Get());
+	_swap_chain_image_count = _images.size();
+	_image_views = CreateSwapChainImageViews(_images, VK_IMAGE_ASPECT_COLOR_BIT);
+	_depth_image = std::make_unique<Image>(renderer, _extent.width, _extent.height, renderer->GetDepthFormat(), VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 	VkMemoryRequirements depth_mem_requirements{};
-	vkGetImageMemoryRequirements(renderer->GetDevice(), m_depth_image->Get(), &depth_mem_requirements);
-	m_depth_image_memory = std::make_unique<DeviceMemory>(m_renderer, depth_mem_requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	vkBindImageMemory(m_renderer->GetDevice(), m_depth_image->Get(), m_depth_image_memory->Get(), 0);
-	m_depth_image_view = std::make_unique<ImageView>(m_renderer, m_depth_image->Get(), m_renderer->GetDepthFormat(), VK_IMAGE_ASPECT_DEPTH_BIT);
-	m_depth_image->TransitionImageLayout(m_renderer->GetGraphicsCommandPool(), m_renderer->GetGraphicsQueue(), m_renderer->GetDepthFormat(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-	m_framebuffers.reserve(m_swap_chain_image_count);
-	for (int i = 0; i < m_swap_chain_image_count; ++i) {
-		m_framebuffers.emplace_back(renderer, m_image_views[i].Get(), m_depth_image_view->Get(), m_extent);
+	vkGetImageMemoryRequirements(renderer->GetDevice(), _depth_image->Get(), &depth_mem_requirements);
+	_depth_image_memory = std::make_unique<DeviceMemory>(_renderer, depth_mem_requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	vkBindImageMemory(_renderer->GetDevice(), _depth_image->Get(), _depth_image_memory->Get(), 0);
+	_depth_image_view = std::make_unique<ImageView>(_renderer, _depth_image->Get(), _renderer->GetDepthFormat(), VK_IMAGE_ASPECT_DEPTH_BIT);
+	_depth_image->TransitionImageLayout(_renderer->GetGraphicsCommandPool(), _renderer->GetGraphicsQueue(), _renderer->GetDepthFormat(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	_framebuffers.reserve(_swap_chain_image_count);
+	for (int i = 0; i < _swap_chain_image_count; ++i) {
+		_framebuffers.emplace_back(renderer, _image_views[i].Get(), _depth_image_view->Get(), _extent);
 	}
 }
 
 Vulkan::SwapChainResources::~SwapChainResources(){}
 
-int Vulkan::SwapChainResources::GetSwapChainImageCount() { return m_swap_chain_image_count; }
+int Vulkan::SwapChainResources::GetSwapChainImageCount() { return _swap_chain_image_count; }
 
-VkExtent2D Vulkan::SwapChainResources::GetSwapchainExtent() { return m_extent; }
+VkExtent2D Vulkan::SwapChainResources::GetSwapchainExtent() { return _extent; }
 
-VkSwapchainKHR Vulkan::SwapChainResources::GetSwapchain() { return m_swap_chain->Get(); }
+VkSwapchainKHR Vulkan::SwapChainResources::GetSwapchain() { return _swap_chain->Get(); }
 
-VkFramebuffer Vulkan::SwapChainResources::GetFramebuffer(int swap_chain_index) { return m_framebuffers[swap_chain_index].Get(); }
+VkFramebuffer Vulkan::SwapChainResources::GetFramebuffer(int swap_chain_index) { return _framebuffers[swap_chain_index].Get(); }
 
 VkPresentModeKHR Vulkan::SwapChainResources::ChooseSwapChainPresentMode(const SwapChainSupportDetails& swap_chain_support_details)
 {
@@ -72,7 +72,7 @@ VkExtent2D Vulkan::SwapChainResources::GetSwapChainExtent(const SwapChainSupport
 	}
 	else {
 		int width, height;
-		glfwGetFramebufferSize(m_renderer->GetWindow(), &width, &height);
+		glfwGetFramebufferSize(_renderer->GetWindow(), &width, &height);
 
 		image_extent = {
 			static_cast<uint32_t>(width),
@@ -89,10 +89,10 @@ VkExtent2D Vulkan::SwapChainResources::GetSwapChainExtent(const SwapChainSupport
 std::vector<VkImage> Vulkan::SwapChainResources::RetrieveSwapChainImage(const VkSwapchainKHR swap_chain)
 {
 	uint32_t swap_chain_image_count;
-	vkGetSwapchainImagesKHR(m_renderer->GetDevice(), swap_chain, &swap_chain_image_count, nullptr);
+	vkGetSwapchainImagesKHR(_renderer->GetDevice(), swap_chain, &swap_chain_image_count, nullptr);
 
 	std::vector<VkImage> swap_chain_images(swap_chain_image_count);
-	vkGetSwapchainImagesKHR(m_renderer->GetDevice(), swap_chain, &swap_chain_image_count, swap_chain_images.data());
+	vkGetSwapchainImagesKHR(_renderer->GetDevice(), swap_chain, &swap_chain_image_count, swap_chain_images.data());
 
 	return swap_chain_images;
 }
@@ -104,7 +104,7 @@ std::vector<Vulkan::ImageView> Vulkan::SwapChainResources::CreateSwapChainImageV
 	swap_chain_image_views.reserve(swap_chain_image_count);
 
 	for (size_t i = 0; i < swap_chain_image_count; ++i) {
-		swap_chain_image_views.emplace_back(m_renderer, swap_chain_images[i], m_renderer->GetSurfaceFormat().format, aspect_flags);
+		swap_chain_image_views.emplace_back(_renderer, swap_chain_images[i], _renderer->GetSurfaceFormat().format, aspect_flags);
 	}
 
 	return swap_chain_image_views;

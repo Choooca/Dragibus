@@ -18,8 +18,8 @@ namespace Vulkan {
 
 	private:
 
-		VkFramebuffer m_framebuffer;
-		Renderer *m_renderer;
+		VkFramebuffer _framebuffer;
+		Renderer *_renderer;
 	};
 
 }

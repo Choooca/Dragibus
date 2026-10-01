@@ -7,18 +7,18 @@ Window::Window()
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-	m_window = glfwCreateWindow(WIDTH, HEIGHT, "Dragibus", nullptr, nullptr);
+	_window = glfwCreateWindow(WIDTH, HEIGHT, "Dragibus", nullptr, nullptr);
 
-	glfwSetWindowUserPointer(m_window, this);
+	glfwSetWindowUserPointer(_window, this);
 }
 
 Window::~Window()
 {
-	glfwDestroyWindow(m_window);
+	glfwDestroyWindow(_window);
 	glfwTerminate();
 }
 
 GLFWwindow *Window::GetGLFWWindow()
 {
-	return m_window;
+	return _window;
 }

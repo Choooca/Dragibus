@@ -21,8 +21,8 @@ namespace Vulkan {
 
 	private:
 
-		VkImage m_image;
-		Renderer* m_renderer;
+		VkImage _image;
+		Renderer* _renderer;
 
 		bool HasStencilComponent(const VkFormat& format);
 

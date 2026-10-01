@@ -6,15 +6,15 @@
 #include <render/rhi/vulkan/renderer.h>
 
 Vulkan::Buffer::Buffer(Renderer* renderer, const VkDeviceSize& size, const VkBufferUsageFlags& usage, const VkMemoryPropertyFlags& properties)
-	: m_renderer(renderer) {
+	: _renderer(renderer) {
 	VkBufferCreateInfo buffer_info{};
 	buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	buffer_info.size = size;
 	buffer_info.usage = usage;
 
 	uint32_t shared_queue_family_index[] = { 
-		m_renderer->GetQueueFamilyIndices().graphics_family.value(),
-		m_renderer->GetQueueFamilyIndices().transfer_family.value()
+		_renderer->GetQueueFamilyIndices().graphics_family.value(),
+		_renderer->GetQueueFamilyIndices().transfer_family.value()
 	};
 
 	if (shared_queue_family_index[0] != shared_queue_family_index[1]) {
@@ -26,25 +26,25 @@ Vulkan::Buffer::Buffer(Renderer* renderer, const VkDeviceSize& size, const VkBuf
 		buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	}
 
-	if (vkCreateBuffer(m_renderer->GetDevice(), &buffer_info, nullptr, &m_buffer) != VK_SUCCESS) {
+	if (vkCreateBuffer(_renderer->GetDevice(), &buffer_info, nullptr, &_buffer) != VK_SUCCESS) {
 		THROW_RUNTIME_ERROR("Failed to create buffer");
 	}
 }
 
 Vulkan::Buffer::~Buffer()
 {
-	vkDestroyBuffer(m_renderer->GetDevice(), m_buffer, nullptr);
+	vkDestroyBuffer(_renderer->GetDevice(), _buffer, nullptr);
 }
 
 VkBuffer Vulkan::Buffer::Get()
 {
-	return m_buffer;
+	return _buffer;
 }
 
 void Vulkan::Buffer::CopyBuffer(const VkBuffer& src_buffer, VkDeviceSize size)
 {
 	const std::string copy_buffer_group_key = "copy_buffer";
-	VkCommandBuffer command_buffer = m_renderer->GetTransferCommandPool()->CreateCommandBufferGroup(1, copy_buffer_group_key)[0];
+	VkCommandBuffer command_buffer = _renderer->GetTransferCommandPool()->CreateCommandBufferGroup(1, copy_buffer_group_key)[0];
 
 	VkCommandBufferBeginInfo begin_info{};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -57,7 +57,7 @@ void Vulkan::Buffer::CopyBuffer(const VkBuffer& src_buffer, VkDeviceSize size)
 	copy_region.dstOffset = 0;
 	copy_region.size = size;
 
-	vkCmdCopyBuffer(command_buffer, src_buffer, m_buffer, 1, &copy_region);
+	vkCmdCopyBuffer(command_buffer, src_buffer, _buffer, 1, &copy_region);
 
 	vkEndCommandBuffer(command_buffer);
 
@@ -66,8 +66,8 @@ void Vulkan::Buffer::CopyBuffer(const VkBuffer& src_buffer, VkDeviceSize size)
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &command_buffer;
 
-	vkQueueSubmit(m_renderer->GetTransferQueue(), 1, &submit_info, VK_NULL_HANDLE);
-	vkQueueWaitIdle(m_renderer->GetTransferQueue());
+	vkQueueSubmit(_renderer->GetTransferQueue(), 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueWaitIdle(_renderer->GetTransferQueue());
 
-	m_renderer->GetTransferCommandPool()->DestroyCommandBufferGroup(copy_buffer_group_key);
+	_renderer->GetTransferCommandPool()->DestroyCommandBufferGroup(copy_buffer_group_key);
 }

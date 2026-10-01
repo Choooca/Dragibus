@@ -7,12 +7,12 @@
 #include <render/rhi/vulkan/renderer.h>
 
 Vulkan::GraphicsPipeline::GraphicsPipeline(Renderer* renderer, const std::string& vert_shader_name, const std::string& frag_shader_name)
-	: m_renderer(renderer)
+	: _renderer(renderer)
 {
-	m_pipeline_layout = std::make_unique<PipelineLayout>(m_renderer);
+	_pipeline_layout = std::make_unique<PipelineLayout>(_renderer);
 
-	ShaderModule vert_module = ShaderModule(m_renderer, vert_shader_name);
-	ShaderModule frag_module = ShaderModule(m_renderer, frag_shader_name);
+	ShaderModule vert_module = ShaderModule(_renderer, vert_shader_name);
+	ShaderModule frag_module = ShaderModule(_renderer, frag_shader_name);
 
 	VkPipelineShaderStageCreateInfo vert_shader_info{};
 	vert_shader_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -118,25 +118,25 @@ Vulkan::GraphicsPipeline::GraphicsPipeline(Renderer* renderer, const std::string
 	graphics_pipeline_info.pDepthStencilState = &depth_stencil_info;
 	graphics_pipeline_info.pColorBlendState = &color_blending_info;
 	graphics_pipeline_info.pDynamicState = &dynamic_state_info;
-	graphics_pipeline_info.layout = m_pipeline_layout->Get();
-	graphics_pipeline_info.renderPass = m_renderer->GetRenderPass();
+	graphics_pipeline_info.layout = _pipeline_layout->Get();
+	graphics_pipeline_info.renderPass = _renderer->GetRenderPass();
 	graphics_pipeline_info.subpass = 0;
 	graphics_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 	graphics_pipeline_info.basePipelineIndex = -1;
 
-	if (vkCreateGraphicsPipelines(m_renderer->GetDevice(), VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr, &m_pipeline) != VK_SUCCESS) {
+	if (vkCreateGraphicsPipelines(_renderer->GetDevice(), VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr, &_pipeline) != VK_SUCCESS) {
 		THROW_RUNTIME_ERROR("Failed to create Pipeline");
 	}
 }
 
 Vulkan::GraphicsPipeline::~GraphicsPipeline()
 {
-	vkDestroyPipeline(m_renderer->GetDevice(), m_pipeline, nullptr);
+	vkDestroyPipeline(_renderer->GetDevice(), _pipeline, nullptr);
 }
 
 VkPipeline Vulkan::GraphicsPipeline::Get()
 {
-	return m_pipeline;
+	return _pipeline;
 }
 
-VkPipelineLayout Vulkan::GraphicsPipeline::GetPipelineLayout() { return m_pipeline_layout->Get(); }
+VkPipelineLayout Vulkan::GraphicsPipeline::GetPipelineLayout() { return _pipeline_layout->Get(); }

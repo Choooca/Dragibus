@@ -24,10 +24,10 @@ namespace Vulkan {
 
 	private:
 
-		VkDescriptorPool m_descriptor_pool;
-		Renderer* m_renderer;
+		VkDescriptorPool _descriptor_pool;
+		Renderer* _renderer;
 
-		std::vector<VkDescriptorSet> m_descriptor_sets;
+		std::vector<VkDescriptorSet> _descriptor_sets;
 
 	};
 

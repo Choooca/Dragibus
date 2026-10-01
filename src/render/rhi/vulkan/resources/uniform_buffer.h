@@ -29,11 +29,11 @@ namespace Vulkan {
 
 	private:
 
-		Renderer* m_renderer;
+		Renderer* _renderer;
 
-		std::unique_ptr<Buffer> m_buffer;
-		std::unique_ptr<DeviceMemory> m_device_memory;
-		void* m_mapped_memory;
+		std::unique_ptr<Buffer> _buffer;
+		std::unique_ptr<DeviceMemory> _device_memory;
+		void* _mapped_memory;
 
 	};
 

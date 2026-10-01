@@ -16,7 +16,7 @@ namespace Vulkan {
 
 	private:
 
-		VkInstance m_instance = VK_NULL_HANDLE;
+		VkInstance _instance = VK_NULL_HANDLE;
 	};
 
 }

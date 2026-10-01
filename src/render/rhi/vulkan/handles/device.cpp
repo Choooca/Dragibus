@@ -37,22 +37,22 @@ Vulkan::Device::Device(const VkPhysicalDevice& physical_device, const std::vecto
 	device_create_info.enabledLayerCount = validation_layers.size();
 	device_create_info.ppEnabledLayerNames = validation_layers.data();
 
-	if (vkCreateDevice(physical_device, &device_create_info, nullptr, &m_device) != VK_SUCCESS) {
+	if (vkCreateDevice(physical_device, &device_create_info, nullptr, &_device) != VK_SUCCESS) {
 		THROW_RUNTIME_ERROR("Failed to create logical device")
 	}
 }
 
 Vulkan::Device::~Device()
 {
-	vkDestroyDevice(m_device, nullptr);
+	vkDestroyDevice(_device, nullptr);
 }
 
 VkDevice Vulkan::Device::Get()
 {
-	return m_device;
+	return _device;
 }
 
 VkDevice* Vulkan::Device::GetPtr()
 {
-	return &m_device;
+	return &_device;
 }

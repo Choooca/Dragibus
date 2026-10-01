@@ -12,8 +12,8 @@ namespace Vulkan {
 
 	private:
 
-		VkDebugUtilsMessengerEXT m_debug_messenger = VK_NULL_HANDLE;
-		VkInstance m_instance = VK_NULL_HANDLE;
+		VkDebugUtilsMessengerEXT _debug_messenger = VK_NULL_HANDLE;
+		VkInstance _instance = VK_NULL_HANDLE;
 	};
 
 }

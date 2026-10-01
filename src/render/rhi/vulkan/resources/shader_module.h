@@ -19,8 +19,8 @@ namespace Vulkan {
 
 	private:
 
-		VkShaderModule m_shader_module;
-		Renderer *m_renderer;
+		VkShaderModule _shader_module;
+		Renderer *_renderer;
 
 	};
 

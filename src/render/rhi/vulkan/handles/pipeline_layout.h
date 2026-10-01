@@ -17,8 +17,8 @@ namespace Vulkan {
 
 	private:
 
-		VkPipelineLayout m_pipeline_layout;
-		Renderer *m_renderer;
+		VkPipelineLayout _pipeline_layout;
+		Renderer *_renderer;
 
 	};
 

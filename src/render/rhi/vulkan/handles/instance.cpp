@@ -24,17 +24,17 @@ Instance::Instance(const std::vector<const char*>& validation_layers, const std:
 	instance_info.ppEnabledExtensionNames = extensions.data();
 	instance_info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)(&debug_info);
 
-	if (vkCreateInstance(&instance_info, nullptr, &m_instance) != VK_SUCCESS) {
+	if (vkCreateInstance(&instance_info, nullptr, &_instance) != VK_SUCCESS) {
 		THROW_RUNTIME_ERROR("Failed to create VkInstance.")
 	}
 }
 
 Vulkan::Instance::~Instance()
 {
-	vkDestroyInstance(m_instance, nullptr);
+	vkDestroyInstance(_instance, nullptr);
 }
 
 VkInstance Vulkan::Instance::Get()
 {
-	return m_instance;
+	return _instance;
 }

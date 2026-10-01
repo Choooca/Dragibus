@@ -17,8 +17,8 @@ namespace Vulkan {
 
 	private:
 
-		VkSemaphore m_semaphore;
-		Renderer *m_renderer;
+		VkSemaphore _semaphore;
+		Renderer *_renderer;
 
 	};
 

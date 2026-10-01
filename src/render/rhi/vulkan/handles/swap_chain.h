@@ -26,8 +26,8 @@ namespace Vulkan {
 
 	private:
 
-		VkSwapchainKHR m_swap_chain = VK_NULL_HANDLE;
-		Renderer* m_renderer;
+		VkSwapchainKHR _swap_chain = VK_NULL_HANDLE;
+		Renderer* _renderer;
 
 	};
 }

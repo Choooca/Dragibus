@@ -15,8 +15,8 @@ namespace Vulkan {
 
 	private:
 
-		VkSurfaceKHR m_surface = VK_NULL_HANDLE;
-		VkInstance m_instance = VK_NULL_HANDLE;
+		VkSurfaceKHR _surface = VK_NULL_HANDLE;
+		VkInstance _instance = VK_NULL_HANDLE;
 	};
 
 }

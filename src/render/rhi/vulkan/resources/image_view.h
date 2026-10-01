@@ -23,8 +23,8 @@ namespace Vulkan {
 
 	private:
 
-		VkImageView m_image_view;
-		Renderer* m_renderer;
+		VkImageView _image_view;
+		Renderer* _renderer;
 	};
 
 }

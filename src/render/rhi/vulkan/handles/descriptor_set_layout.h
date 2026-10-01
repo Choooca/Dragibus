@@ -17,8 +17,8 @@ namespace Vulkan {
 
 	private:
 
-		VkDescriptorSetLayout m_descriptor_set_layout;
-		Renderer *m_renderer;
+		VkDescriptorSetLayout _descriptor_set_layout;
+		Renderer *_renderer;
 
 	};
 

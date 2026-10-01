@@ -36,12 +36,12 @@ namespace Vulkan {
 
 		const std::string command_buffer_key = "in_flight";
 
-		Renderer* m_renderer;
+		Renderer* _renderer;
 
-		std::unique_ptr<DescriptorPool> m_descriptor_pool;
-		std::vector<UniformBuffer> m_uniform_buffers;
-		std::vector<Fence> m_in_flight_fences;
-		std::vector<Semaphore> m_image_available_semaphore;
+		std::unique_ptr<DescriptorPool> _descriptor_pool;
+		std::vector<UniformBuffer> _uniform_buffers;
+		std::vector<Fence> _in_flight_fences;
+		std::vector<Semaphore> _image_available_semaphore;
 	};
 
 }

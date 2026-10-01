@@ -24,10 +24,10 @@ namespace Vulkan {
 
 	private:
 
-		VkPipeline m_pipeline;
-		Renderer *m_renderer;
+		VkPipeline _pipeline;
+		Renderer *_renderer;
 
-		std::unique_ptr<PipelineLayout> m_pipeline_layout;
+		std::unique_ptr<PipelineLayout> _pipeline_layout;
 	};
 
 }

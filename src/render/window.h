@@ -17,5 +17,5 @@ private:
 
 	const int HEIGHT = 600, WIDTH = 800;
 
-	GLFWwindow *m_window;
+	GLFWwindow *_window;
 };

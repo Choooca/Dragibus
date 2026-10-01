@@ -24,10 +24,10 @@ namespace Vulkan {
 
 	private:
 
-		Renderer* m_renderer;
+		Renderer* _renderer;
 
-		std::unique_ptr<Image> m_image;
-		std::unique_ptr<DeviceMemory> m_device_memory;
+		std::unique_ptr<Image> _image;
+		std::unique_ptr<DeviceMemory> _device_memory;
 	};
 
 }

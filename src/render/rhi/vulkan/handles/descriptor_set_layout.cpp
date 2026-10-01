@@ -6,7 +6,7 @@
 #include <render/rhi/vulkan/renderer.h>
 
 Vulkan::DescriptorSetLayout::DescriptorSetLayout(Renderer* renderer)
-	: m_renderer(renderer)
+	: _renderer(renderer)
 {
 	VkDescriptorSetLayoutBinding ubo_layout_binding{};
 	ubo_layout_binding.binding = 0;
@@ -28,17 +28,17 @@ Vulkan::DescriptorSetLayout::DescriptorSetLayout(Renderer* renderer)
 	layout_info.bindingCount = bindings.size();
 	layout_info.pBindings = bindings.data();
 
-	if (vkCreateDescriptorSetLayout(m_renderer->GetDevice(), &layout_info, nullptr, &m_descriptor_set_layout) != VK_SUCCESS) {
+	if (vkCreateDescriptorSetLayout(_renderer->GetDevice(), &layout_info, nullptr, &_descriptor_set_layout) != VK_SUCCESS) {
 		THROW_RUNTIME_ERROR("Failed to create Descriptor Set Layout");
 	}
 }
 
 Vulkan::DescriptorSetLayout::~DescriptorSetLayout()
 {
-	vkDestroyDescriptorSetLayout(m_renderer->GetDevice(), m_descriptor_set_layout, nullptr);
+	vkDestroyDescriptorSetLayout(_renderer->GetDevice(), _descriptor_set_layout, nullptr);
 }
 
 VkDescriptorSetLayout Vulkan::DescriptorSetLayout::Get()
 {
-	return m_descriptor_set_layout;
+	return _descriptor_set_layout;
 }
