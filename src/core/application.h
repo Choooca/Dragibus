@@ -19,8 +19,9 @@ public:
 
 private:
 
-	std::unique_ptr<Window> m_window;
-	std::unique_ptr<Vulkan::Renderer> m_renderer;
+	std::unique_ptr<Window> _window;
+	std::unique_ptr<Vulkan::Renderer> _renderer;
+	std::unique_ptr<class Scene> _scene;
 
 	void RecreateSwapChainResources();
 

@@ -28,12 +28,6 @@
  Vulkan::Renderer::Renderer(GLFWwindow* window)
 	 : m_window(window)
 {
-	const std::vector<Vertex> vertices = {
-	};
-
-	const std::vector<uint16_t> indices = {
-	};
-
 	if (!CheckValidationLayerSupport(m_validation_layers)) {
 		THROW_RUNTIME_ERROR("Asked validation layers are not supported.");
 	}
@@ -76,8 +70,6 @@
 	m_swap_chain_ressources = std::make_unique<SwapChainResources>(this);
 	m_descriptor_set_layout = std::make_unique<DescriptorSetLayout>(this);
 	m_graphics_pipeline = std::make_unique<GraphicsPipeline>(this, "simple_shader_vert.spv", "simple_shader_frag.spv");
-	m_vertex_buffer = std::make_unique<PrimitiveBuffer>(this, vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-	m_index_buffer = std::make_unique<PrimitiveBuffer>(this, indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 	m_texture = std::make_unique<Texture>(this, "eliasdridi.jpg");
 	m_texture_view = std::make_unique<ImageView>(this, m_texture->GetImage(), VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 	m_sampler = std::make_unique<Sampler>(this);
@@ -320,11 +312,6 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 	vkCmdBeginRenderPass(command_buffer, &render_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline->Get());
 
-	VkBuffer vertex_buffers[] = {m_vertex_buffer->GetBuffer()};
-	VkDeviceSize offset = { 0 };
-	vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, &offset);
-	vkCmdBindIndexBuffer(command_buffer, m_index_buffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
-
 	VkViewport viewport{};
 	viewport.x = 0;
 	viewport.y = 0;
@@ -339,9 +326,18 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 	scissors.offset = { 0, 0 };
 	vkCmdSetScissor(command_buffer, 0, 1, &scissors);
 
+
 	VkDescriptorSet descriptor_set = m_frame_resources->GetDescriptorSet(current_frame);
 	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline->GetPipelineLayout(), 0, 1, &descriptor_set, 0, nullptr);
-	vkCmdDrawIndexed(command_buffer, 12, 1, 0, 0, 0);
+
+	for (const GPUPrimitive& gpu_primitive : _gpu_primitives) {
+		VkBuffer vertex_buffers[] = { gpu_primitive._vertex_buffer->GetBuffer() };
+		VkDeviceSize offset = { 0 };
+		vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, &offset);
+		vkCmdBindIndexBuffer(command_buffer, gpu_primitive._index_buffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(command_buffer, gpu_primitive._index_count, 1, 0, 0, 0);
+	}
+
 	vkCmdEndRenderPass(command_buffer);
 
 	vkEndCommandBuffer(command_buffer);
@@ -485,4 +481,18 @@ VkSurfaceFormatKHR Vulkan::Renderer::ChooseSwapChainImageFormat(const SwapChainS
 	}
 
 	return image_format;
+}
+
+Vulkan::GPUPrimitive::GPUPrimitive(Renderer* renderer, const Primitive& primitive) {
+	_vertex_buffer = std::make_unique<PrimitiveBuffer>(renderer, primitive.vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+	_index_buffer = std::make_unique<PrimitiveBuffer>(renderer, primitive.indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+	_index_count = primitive.indices.size();
+}
+
+void Vulkan::Renderer::AddScene(const std::vector<Mesh>& meshes) {
+	for (const Mesh& mesh : meshes) {
+		for (const Primitive& primitive : mesh.primitives) {
+			_gpu_primitives.emplace_back(this, primitive);
+		}
+	}
 }

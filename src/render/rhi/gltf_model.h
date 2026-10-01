@@ -12,6 +12,8 @@ public:
 	GLTFModel(const std::string &model_name);
 	~GLTFModel();
 
+	std::vector<Mesh> &&GetMeshes(); 
+
 private :
 
 	tg3_parse_options m_options;

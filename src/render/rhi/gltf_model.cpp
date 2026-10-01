@@ -37,6 +37,11 @@ GLTFModel::~GLTFModel() {
 	tg3_error_stack_free(&m_errors);
 }
 
+std::vector<Mesh> &&GLTFModel::GetMeshes()
+{
+	return std::move(_meshes);
+}
+
 #pragma endregion
 
 Mesh GLTFModel::ParseMesh(const tg3_mesh &mesh)

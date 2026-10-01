@@ -7,10 +7,14 @@
 
 #include <utils/custom_type.h>
 
+struct Primitive;
+struct Mesh;
+
 namespace Vulkan {
 
 	struct QueueFamilyIndices;
 	struct SwapChainSupportDetails;
+	class Renderer;
 	class Instance;
 	class DebugMessenger;
 	class Surface;
@@ -28,6 +32,15 @@ namespace Vulkan {
 	class CommandPool;
 	class Semaphore;
 
+	struct GPUPrimitive {
+
+		GPUPrimitive(Renderer* renderer, const Primitive& primitive);
+
+		std::unique_ptr<PrimitiveBuffer> _vertex_buffer;
+		std::unique_ptr<PrimitiveBuffer> _index_buffer;
+		int _index_count = 0;
+	};
+
 	class Renderer {
 
 	public:
@@ -36,7 +49,7 @@ namespace Vulkan {
 		~Renderer();
 
 		void Init();
-		void Loop();
+		void Loop( );
 
 		GLFWwindow* GetWindow();
 		VkPhysicalDevice GetPhysicalDevice();
@@ -52,6 +65,8 @@ namespace Vulkan {
 		CommandPool *GetTransferCommandPool();
 		VkRenderPass GetRenderPass();
 		VkDescriptorSetLayout GetDescriptorSetLayout();
+
+		void AddScene(const std::vector<Mesh>& meshes);
 
 		bool m_frame_buffer_resized = false;
 
@@ -91,6 +106,8 @@ namespace Vulkan {
 		std::unique_ptr<Sampler> m_sampler;
 		std::unique_ptr<FrameResources> m_frame_resources;
 		std::vector<Semaphore> m_render_finish_semaphore;
+
+		std::vector<GPUPrimitive> _gpu_primitives;
 
 		bool CheckValidationLayerSupport(const std::vector<const char*>& validation_layer);
 		bool CheckExtensionSupport(std::vector<const char*> extensions);

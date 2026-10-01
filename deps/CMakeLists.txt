@@ -15,6 +15,11 @@ function(IncludeDependency lib_name git_url git_version sub_source_dir)
 	)
 
 	FetchContent_MakeAvailable(${lib_name})
+
+	# FetchContent sets these in this function's scope only; re-export them
+	# so callers can use ${<lib_name>_SOURCE_DIR} after calling IncludeDependency().
+	set(${lib_name}_SOURCE_DIR ${${lib_name}_SOURCE_DIR} PARENT_SCOPE)
+	set(${lib_name}_BINARY_DIR ${${lib_name}_BINARY_DIR} PARENT_SCOPE)
 endfunction()
 
 set(VULKAN_MAJOR_VERSION 1)
@@ -27,6 +32,9 @@ IncludeDependency(vulkanheaders https://github.com/KhronosGroup/Vulkan-Headers.g
 IncludeDependency(vulkanhpp https://github.com/KhronosGroup/Vulkan-Hpp.git v${VULKAN_VERSION} "")
 IncludeDependency(glm https://github.com/g-truc/glm.git 1.0.3 "")
 IncludeDependency(spdlog https://github.com/gabime/spdlog.git v1.17.0 "")
+
+set(TINYGLTF3_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(TINYGLTF3_INSTALL OFF CACHE BOOL "" FORCE)
 IncludeDependency(tinygltf https://github.com/syoyo/tinygltf.git release "")
 
 #I don't include stb with IncludeDependency because outside the function the first parameter doesn't seem to be a target.
@@ -45,6 +53,7 @@ target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
 add_library(deps INTERFACE)
 target_include_directories(deps INTERFACE ${vulkanhpp_SOURCE_DIR})
 target_include_directories(deps INTERFACE ${stb_SOURCE_DIR})
+target_include_directories(deps INTERFACE ${tinygltf_SOURCE_DIR})
 
 find_package(Vulkan REQUIRED)
-target_link_libraries(deps INTERFACE stb Vulkan::Headers Vulkan::Vulkan glfw glm::glm spdlog::spdlog tinygltf)
+target_link_libraries(deps INTERFACE stb Vulkan::Headers Vulkan::Vulkan glfw glm::glm spdlog::spdlog)
