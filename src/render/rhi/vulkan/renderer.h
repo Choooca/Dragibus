@@ -9,6 +9,7 @@
 
 struct Primitive;
 struct Mesh;
+class Camera;
 
 namespace Vulkan {
 
@@ -49,7 +50,7 @@ namespace Vulkan {
 		~Renderer();
 
 		void Init();
-		void Loop( );
+		void Loop(Camera* camera);
 
 		GLFWwindow* GetWindow();
 		VkPhysicalDevice GetPhysicalDevice();
@@ -126,7 +127,7 @@ namespace Vulkan {
 		void RecreateSwapChainResources();
 		static void FramebufferResizedCallback(GLFWwindow* window, int width, int height);
 
-		void UpdateUniformBuffer(uint32_t current_frame);
+		void UpdateUniformBuffer(uint32_t current_frame, Camera *renderer);
 		void RecordCommandBuffer(uint32_t current_frame, uint32_t image_index);
 	};
 }

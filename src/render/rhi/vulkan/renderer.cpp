@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <behavior/camera.h>
 #include <render/primitives.h>
 #include <render/rhi/vulkan/frame_resources.h>
 #include <render/rhi/vulkan/swap_chain_resources.h>
@@ -266,7 +267,7 @@ void Vulkan::Renderer::FramebufferResizedCallback(GLFWwindow* window, int width,
 	renderer->_frame_buffer_resized = true;
 }
 
-void Vulkan::Renderer::UpdateUniformBuffer(uint32_t current_frame)
+void Vulkan::Renderer::UpdateUniformBuffer(uint32_t current_frame, Camera* camera)
 {
 	std::chrono::high_resolution_clock timer;
 
@@ -276,9 +277,9 @@ void Vulkan::Renderer::UpdateUniformBuffer(uint32_t current_frame)
 	float delta_time = std::chrono::duration<float, std::chrono::seconds::period>(now - start).count();
 
 	UniformBufferObject ubo{};
-	ubo.model = glm::rotate(glm::mat4(1.0f), delta_time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.perspective = glm::perspective(glm::radians(45.0f), _swap_chain_ressources->GetSwapchainExtent().width / (float)_swap_chain_ressources->GetSwapchainExtent().height, 0.001f, 100.0f);
+	ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
+	ubo.view = glm::lookAt(camera->GetPosition(), camera->GetPosition() + camera->GetForward(), glm::vec3(0, 1, 0));
+	ubo.perspective = glm::perspective(glm::radians(45.0f), _swap_chain_ressources->GetSwapchainExtent().width / (float)_swap_chain_ressources->GetSwapchainExtent().height, 0.001f, 1000.0f);
 	ubo.perspective[1][1] *= -1;
 
 	memcpy(_frame_resources->GetUniformBuffer(current_frame)->GetMappedMemory(), &ubo, sizeof(UniformBufferObject));
@@ -326,7 +327,6 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 	scissors.offset = { 0, 0 };
 	vkCmdSetScissor(command_buffer, 0, 1, &scissors);
 
-
 	VkDescriptorSet descriptor_set = _frame_resources->GetDescriptorSet(current_frame);
 	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphics_pipeline->GetPipelineLayout(), 0, 1, &descriptor_set, 0, nullptr);
 
@@ -343,7 +343,7 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 	vkEndCommandBuffer(command_buffer);
 }
 
-void Vulkan::Renderer::Loop()
+void Vulkan::Renderer::Loop(Camera* camera)
 {
 	VkFence in_flight_fence = _frame_resources->GetInFlightFence(_current_frame);
 	vkWaitForFences(_device->Get(), 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
@@ -365,7 +365,7 @@ void Vulkan::Renderer::Loop()
 	vkResetCommandBuffer(command_buffer, 0);
 	RecordCommandBuffer(_current_frame, swap_chain_image_index);
 
-	UpdateUniformBuffer(_current_frame);
+	UpdateUniformBuffer(_current_frame, camera);
 
 	VkSemaphore wait_semaphores[] = { _frame_resources->GetImageAvailableSemaphore(_current_frame) };
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
