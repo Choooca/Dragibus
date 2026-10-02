@@ -66,9 +66,87 @@ enum DRAW_MODE {
 	TRIANGLE_FAN
 };
 
+struct Sampler {
+
+	enum FilterMode : int32_t
+	{
+		NEAREST = 9728,
+		LINEAR = 9729,
+		NEAREST_MIPMAP_NEAREST = 9984,
+		LINEAR_MIPMAP_NEAREST = 9985,
+		NEAREST_MIPMAP_LINEAR = 9986,
+		LINEAR_MIPMAP_LINEAR = 9987
+	};
+
+	enum WrapMode : int32_t
+	{
+		REPEAT = 10497,
+		CLAMP_TO_EDGE = 33071,
+		MIRRORED_REPEAT = 33648
+	};
+	
+	std::string name;
+	FilterMode mag_filter;
+	FilterMode min_filter;
+	WrapMode wrap_s;
+	WrapMode wrap_t;
+
+};
+
+
+struct Texture {
+	std::string name;
+	int sampler_index;
+	int image_index;
+};
+
+struct Image {
+	std::string name;
+	std::vector<uint8_t> pixels;
+	int32_t width, height;
+	int32_t channels;
+};
+
+struct Material {
+	enum AlphaMode {
+		OPAQUE,
+		MASK,
+		BLEND
+	};
+
+	std::string name;
+
+	bool double_sided = false;
+	glm::vec3 emissive = glm::vec3(0);
+
+	AlphaMode alpha_mode;
+	double alpha_cutoff = 0.5f;
+
+	int emmisive_texture_index;
+	int emmisive_texture_texcoord;
+
+	int normal_texture_index;
+	int normal_texture_texcoord;
+
+	int occlusion_texture_index;
+	int occlusion_texture_texcoord;
+
+	glm::vec<4, double> base_color = glm::vec4(1);
+	int base_color_texture_index;
+	int base_color_texture_texcoord;
+
+	double metallic_factor = 1;
+	double roughness_factor = 1;
+	int metallic_roughness_texture_index;
+	int metallic_roughness_texture_texcoord;
+};
+
+
 struct Primitive {
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
+
+	int material_index;
 
 	DRAW_MODE mode;
 };

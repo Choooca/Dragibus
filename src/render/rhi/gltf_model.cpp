@@ -1,9 +1,12 @@
 #include "gltf_model.h"
 
 #include <sstream>
+#include <unordered_map>
 
 #include <utils/build_macro.h>
 #include <utils/debug_macro.h>
+
+#include <render/primitives.h>
 
 #pragma region CTors/Dtors
 
@@ -28,6 +31,26 @@ GLTFModel::GLTFModel(const std::string& model_name) {
 	_meshes.resize(_model.meshes_count);
 	for (uint32_t i = 0; i < _model.meshes_count; ++i) {
 		_meshes[i] = ParseMesh(_model.meshes[i]);
+	}
+
+	_materials.resize(_model.materials_count);
+	for (uint32_t i = 0; i <  _model.materials_count; ++i) {
+		_materials[i] = ParseMaterial(_model.materials[i]);
+	}
+
+	_textures.resize(_model.textures_count);
+	for (uint32_t i = 0; i < _model.textures_count; ++i) {
+		_textures[i] = ParseTexture(_model.textures[i]);
+	}
+
+	_samplers.resize(_model.samplers_count);
+	for (uint32_t i = 0; i < _model.samplers_count; ++i) {
+		_samplers[i] = ParseSampler(_model.samplers[i]);
+	}
+
+	_images.resize(_model.images_count);
+	for (uint32_t i = 0; i < _model.images_count; ++i) {
+		_images[i] = ParseImage(_model.images[i]);
 	}
 
 }
@@ -56,6 +79,91 @@ Mesh GLTFModel::ParseMesh(const tg3_mesh &mesh)
 	for (uint32_t i = 0; i < mesh.primitives_count; ++i) {
 		out.primitives[i] = ParsePrimitive(mesh.primitives[i]);
 	}
+
+	return out;
+}
+
+Material GLTFModel::ParseMaterial(const tg3_material& material)
+{
+	Material out = {};
+
+	out.name.assign(material.name.data, material.name.len);
+	out.double_sided = material.double_sided;
+	out.emissive = glm::vec3(material.emissive_factor[0], material.emissive_factor[1], material.emissive_factor[2]);
+
+	const std::unordered_map<std::string, Material::AlphaMode> alpha_string_to_enum = {
+		{ "OPAQUE", Material::AlphaMode::OPAQUE},
+		{ "BLEND", Material::AlphaMode::BLEND},
+		{ "MASK", Material::AlphaMode::MASK}
+	};
+
+	std::string alpha_mode_key = std::string(material.alpha_mode.data, material.alpha_mode.len);
+
+	auto itr = alpha_string_to_enum.find(alpha_mode_key);
+	if (itr != alpha_string_to_enum.end()) {
+		out.alpha_mode = itr->second;
+	}
+
+	out.alpha_cutoff = material.alpha_cutoff;
+
+	out.emmisive_texture_index = material.emissive_texture.index;
+	out.emmisive_texture_texcoord = material.emissive_texture.tex_coord;
+
+	out.normal_texture_index = material.normal_texture.index;
+	out.normal_texture_texcoord = material.normal_texture.tex_coord;
+
+	out.occlusion_texture_index = material.occlusion_texture.index;
+	out.occlusion_texture_texcoord = material.occlusion_texture.tex_coord;
+
+	out.base_color = {
+		material.pbr_metallic_roughness.base_color_factor[0],
+		material.pbr_metallic_roughness.base_color_factor[1],
+		material.pbr_metallic_roughness.base_color_factor[2],
+		material.pbr_metallic_roughness.base_color_factor[3]
+	};
+
+	out.base_color_texture_index = material.pbr_metallic_roughness.base_color_texture.index;
+	out.base_color_texture_texcoord = material.pbr_metallic_roughness.base_color_texture.tex_coord;
+
+	out.metallic_factor = material.pbr_metallic_roughness.metallic_factor;
+	out.roughness_factor = material.pbr_metallic_roughness.roughness_factor;
+	out.metallic_roughness_texture_index = material.pbr_metallic_roughness.metallic_roughness_texture.index;
+	out.metallic_roughness_texture_texcoord = material.pbr_metallic_roughness.metallic_roughness_texture.tex_coord;
+
+	return out;
+}
+
+Texture GLTFModel::ParseTexture(const tg3_texture& texture)
+{
+	Texture out{};
+
+	out.name.assign(texture.name.data, texture.name.len);
+	out.sampler_index = texture.sampler;
+	out.image_index = texture.source;
+
+	return out;
+}
+
+Sampler GLTFModel::ParseSampler(const tg3_sampler& sampler)
+{
+	Sampler out{};
+	out.name.assign(sampler.name.data, sampler.name.len);
+	out.mag_filter = (Sampler::FilterMode)sampler.mag_filter;
+	out.min_filter = (Sampler::FilterMode)sampler.min_filter;
+	out.wrap_s = (Sampler::WrapMode)sampler.wrap_s;
+	out.wrap_t = (Sampler::WrapMode)sampler.wrap_t;
+
+	return out;
+}
+
+Image GLTFModel::ParseImage(const tg3_image& image)
+{
+	Image out{};
+	out.name.assign(image.name.data, image.name.len);
+	out.channels = image.component;
+	out.width = image.width;
+	out.height = image.height;
+	out.pixels = std::vector<uint8_t>(image.image.data, image.image.data + image.image.count);
 
 	return out;
 }
@@ -112,6 +220,8 @@ Primitive GLTFModel::ParsePrimitive(const tg3_primitive& primitive)
 		}
 	}
 
+
+	//Vertices
 	uint32_t vertice_count = 0;
 	for (uint32_t i = 0; i < primitive.attributes_count; ++i) {
 		std::string key;
@@ -176,6 +286,9 @@ Primitive GLTFModel::ParsePrimitive(const tg3_primitive& primitive)
 			}
 		}
 	}
+
+	//Material
+	out.material_index = primitive.material;
 
 	return out;
 }
