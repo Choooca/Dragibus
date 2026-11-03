@@ -13,7 +13,7 @@
 
 Application::Application()
 {
-	std::unique_ptr<GLTFModel> model = std::make_unique<GLTFModel>("robot/scene.gltf");
+	std::unique_ptr<Render::GLTFModel> model = std::make_unique<Render::GLTFModel>("robot/scene.gltf");
 	_scene = std::make_unique<Scene>();
 	_scene->SetMeshes(model->GetMeshes());
 	_window = std::make_unique<Window>();
@@ -36,6 +36,6 @@ void Application::Loop()
 		_renderer->Loop(_camera.get());
 	}
 
-	vkDeviceWaitIdle(_renderer->GetDevice());
+	_renderer->GetDevice().waitIdle();
 }
 

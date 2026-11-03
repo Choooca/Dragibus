@@ -5,6 +5,5 @@ add_subdirectory(vulkan)
 target_sources(Dragibus
 	PRIVATE
 		gltf_model.cpp
-		tiny_gltf_v3_impl.cpp
 		scene.cpp
 )

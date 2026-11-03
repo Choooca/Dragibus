@@ -8,4 +8,5 @@ target_sources(Dragibus
 add_subdirectory(core)
 add_subdirectory(render)
 add_subdirectory(utils)
+add_subdirectory(third_party)
 add_subdirectory(behavior)

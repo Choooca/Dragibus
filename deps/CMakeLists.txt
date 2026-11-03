@@ -23,8 +23,8 @@ function(IncludeDependency lib_name git_url git_version sub_source_dir)
 endfunction()
 
 set(VULKAN_MAJOR_VERSION 1)
-set(VULKAN_MINOR_VERSION 3)
-set(VULKAN_PATCH_VERSION 278)
+set(VULKAN_MINOR_VERSION 4)
+set(VULKAN_PATCH_VERSION 341)
 set(VULKAN_VERSION ${VULKAN_MAJOR_VERSION}.${VULKAN_MINOR_VERSION}.${VULKAN_PATCH_VERSION})
 
 IncludeDependency(glfw https://github.com/glfw/glfw.git 3.4 "")
@@ -54,6 +54,9 @@ add_library(deps INTERFACE)
 target_include_directories(deps INTERFACE ${vulkanhpp_SOURCE_DIR})
 target_include_directories(deps INTERFACE ${stb_SOURCE_DIR})
 target_include_directories(deps INTERFACE ${tinygltf_SOURCE_DIR})
+
+target_compile_definitions(deps INTERFACE VULKAN_HPP_NO_STRUCT_CONSTRUCTORS)
+target_compile_definitions(deps INTERFACE VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS)
 
 find_package(Vulkan REQUIRED)
 target_link_libraries(deps INTERFACE stb Vulkan::Headers Vulkan::Vulkan glfw glm::glm spdlog::spdlog)

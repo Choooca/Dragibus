@@ -10,10 +10,8 @@ namespace details {
     }
 }
 
-#define THROW_RUNTIME_ERROR(...) \
-    throw std::runtime_error(std::format("ERROR in {} line {}. {}", details::FileName(__FILE__), __LINE__ , __VA_ARGS__));
+#define THROW_RUNTIME_ERROR(fmt, ...) \
+    do { throw std::runtime_error(std::format("ERROR in {} line {}. " fmt, details::FileName(__FILE__), __LINE__ __VA_OPT__(,) __VA_ARGS__)); } while (0)
 
-#define PRINT_RUNTIME_ERROR(...) \
-    throw std::runtime_error(std::format("ERROR in {} line {}. {}", details::FileName(__FILE__), __LINE__ , __VA_ARGS__));
-
-#define THROW_INVALID_ARGUMENT(out) std::string file = std::string(__FILE__); throw std::invalid_argument(std::format("INVALID ARGUMENT in {} line {}. {}",file.substr(file.find_last_of("\\") + 1), __LINE__ ,out));
+#define THROW_INVALID_ARGUMENT(out) \
+    do { throw std::invalid_argument(std::format("INVALID ARGUMENT in {} line {}. {}", details::FileName(__FILE__), __LINE__, out)); } while (0)

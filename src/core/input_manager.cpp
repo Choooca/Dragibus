@@ -44,7 +44,7 @@ void InputManager::Update()
 bool InputManager::IsKeyPress(int keyId)
 {
 	if (keyId < GLFW_KEY_SPACE || keyId >= GLFW_KEY_LAST) {
-		PRINT_RUNTIME_ERROR("Input with id : {} doesn't exist.", keyId);
+		spdlog::error("Input with id : {} doesn't exist.", keyId);
 		return false;
 	}
 

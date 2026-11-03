@@ -1,6 +1,10 @@
 #pragma once
 #include <vector>
 
+namespace Render {
+	struct Mesh;
+}
+
 class Scene
 {
 public:
@@ -8,10 +12,10 @@ public:
 	Scene();
 	~Scene();
 
-	const std::vector<struct Mesh>& GetMeshes() const;
-	void SetMeshes(std::vector<struct Mesh>&& meshes);
+	const std::vector<Render::Mesh>& GetMeshes() const;
+	void SetMeshes(std::vector<Render::Mesh>&& meshes);
 
 private:
 
-	std::vector<struct Mesh> _meshes;
+	std::vector<Render::Mesh> _meshes;
 };

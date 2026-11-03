@@ -10,7 +10,7 @@
 
 #pragma region CTors/Dtors
 
-GLTFModel::GLTFModel(const std::string& model_name) {
+Render::GLTFModel::GLTFModel(const std::string& model_name) {
 
 	const std::string& model_path = std::string(MODELS_DIR) + model_name;
 
@@ -25,7 +25,7 @@ GLTFModel::GLTFModel(const std::string& model_name) {
 			msg << (int)_errors.entries[i].severity << " " << (_errors.entries[i].message ? _errors.entries[i].message : "(null)") << "\n";
 		}
 
-		PRINT_RUNTIME_ERROR(msg.str());
+		THROW_RUNTIME_ERROR("{}", msg.str());
 	}
 
 	_meshes.resize(_model.meshes_count);
@@ -55,19 +55,19 @@ GLTFModel::GLTFModel(const std::string& model_name) {
 
 }
 
-GLTFModel::~GLTFModel() {
+Render::GLTFModel::~GLTFModel() {
 	tg3_model_free(&_model);
 	tg3_error_stack_free(&_errors);
 }
 
-std::vector<Mesh> &&GLTFModel::GetMeshes()
+std::vector<Render::Mesh> && Render::GLTFModel::GetMeshes()
 {
 	return std::move(_meshes);
 }
 
 #pragma endregion
 
-Mesh GLTFModel::ParseMesh(const tg3_mesh &mesh)
+Render::Mesh Render::GLTFModel::ParseMesh(const tg3_mesh &mesh)
 {
 	Mesh out{};
 
@@ -83,7 +83,7 @@ Mesh GLTFModel::ParseMesh(const tg3_mesh &mesh)
 	return out;
 }
 
-Material GLTFModel::ParseMaterial(const tg3_material& material)
+Render::Material Render::GLTFModel::ParseMaterial(const tg3_material& material)
 {
 	Material out = {};
 
@@ -91,10 +91,10 @@ Material GLTFModel::ParseMaterial(const tg3_material& material)
 	out.double_sided = material.double_sided;
 	out.emissive = glm::vec3(material.emissive_factor[0], material.emissive_factor[1], material.emissive_factor[2]);
 
-	const std::unordered_map<std::string, Material::AlphaMode> alpha_string_to_enum = {
-		{ "OPAQUE", Material::AlphaMode::OPAQUE},
-		{ "BLEND", Material::AlphaMode::BLEND},
-		{ "MASK", Material::AlphaMode::MASK}
+	const std::unordered_map<std::string, Render::Material::AlphaMode> alpha_string_to_enum = {
+		{ "OPAQUE", Render::Material::AlphaMode::OPAQUE},
+		{ "BLEND", Render::Material::AlphaMode::BLEND},
+		{ "MASK", Render::Material::AlphaMode::MASK}
 	};
 
 	std::string alpha_mode_key = std::string(material.alpha_mode.data, material.alpha_mode.len);
@@ -133,7 +133,7 @@ Material GLTFModel::ParseMaterial(const tg3_material& material)
 	return out;
 }
 
-Texture GLTFModel::ParseTexture(const tg3_texture& texture)
+Render::Texture Render::GLTFModel::ParseTexture(const tg3_texture& texture)
 {
 	Texture out{};
 
@@ -144,7 +144,7 @@ Texture GLTFModel::ParseTexture(const tg3_texture& texture)
 	return out;
 }
 
-Sampler GLTFModel::ParseSampler(const tg3_sampler& sampler)
+Render::Sampler Render::GLTFModel::ParseSampler(const tg3_sampler& sampler)
 {
 	Sampler out{};
 	out.name.assign(sampler.name.data, sampler.name.len);
@@ -156,7 +156,7 @@ Sampler GLTFModel::ParseSampler(const tg3_sampler& sampler)
 	return out;
 }
 
-Image GLTFModel::ParseImage(const tg3_image& image)
+Render::Image Render::GLTFModel::ParseImage(const tg3_image& image)
 {
 	Image out{};
 	out.name.assign(image.name.data, image.name.len);
@@ -168,7 +168,7 @@ Image GLTFModel::ParseImage(const tg3_image& image)
 	return out;
 }
 
-Primitive GLTFModel::ParsePrimitive(const tg3_primitive& primitive)
+Render::Primitive Render::GLTFModel::ParsePrimitive(const tg3_primitive& primitive)
 {
 	Primitive out{};
 
@@ -280,7 +280,7 @@ Primitive GLTFModel::ParsePrimitive(const tg3_primitive& primitive)
 						out.vertices[j].tex_coord0 = glm::vec2(ParseByte<glm::vec<2, uint16_t, glm::qualifier::defaultp>>(address)) / 65535.0f;
 						break;
 					default:
-						THROW_INVALID_ARGUMENT("Invalid component type for texcoord0 : " + std::to_string(accessor.component_type))
+						THROW_INVALID_ARGUMENT("Invalid component type for texcoord0 : " + std::to_string(accessor.component_type));
 					}
 				}
 			}

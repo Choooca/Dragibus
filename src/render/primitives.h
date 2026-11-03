@@ -6,155 +6,126 @@
 #include <glm/glm.hpp>
 #include <glfw/glfw3.h>
 
-struct UniformBufferObject {
-	alignas(16) glm::mat4 model;
-	alignas(16) glm::mat4 view;
-	alignas(16) glm::mat4 perspective;
-};
+
+namespace Render {
+
+	struct UniformBufferObject {
+		alignas(16) glm::mat4 model;
+		alignas(16) glm::mat4 view;
+		alignas(16) glm::mat4 perspective;
+	};
 
 #pragma region  Model
 
-struct Vertex {
-	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec4 tangent;
-	glm::vec2 tex_coord0;
 
-	static VkVertexInputBindingDescription GetBindingDescription() {
-		VkVertexInputBindingDescription out{};
-		out.binding = 0;
-		out.stride = sizeof(Vertex);
-		out.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-		return out;
-	}
-
-	static std::array<VkVertexInputAttributeDescription, 4> GetVertexInputAttributeDescription() {
-		std::array<VkVertexInputAttributeDescription, 4> out{};
-
-		out[0].binding = 0;
-		out[0].location = 0;
-		out[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-		out[0].offset = offsetof(Vertex, position);
-
-		out[1].binding = 0;
-		out[1].location = 1;
-		out[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		out[1].offset = offsetof(Vertex, normal);
-
-		out[2].binding = 0;
-		out[2].location = 2;
-		out[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		out[2].offset = offsetof(Vertex, tangent);
-
-		out[3].binding = 0;
-		out[3].location = 3;
-		out[3].format = VK_FORMAT_R32G32_SFLOAT;
-		out[3].offset = offsetof(Vertex, tex_coord0);
-
-		return out;
-	}
-};
-
-enum DRAW_MODE {
-	POINTS,
-	LINES,
-	LINE_LOOP,
-	LINE_STRIP,
-	TRIANGLES,
-	TRIANGLE_STRIP,
-	TRIANGLE_FAN
-};
-
-struct Sampler {
-
-	enum FilterMode : int32_t
-	{
-		NEAREST = 9728,
-		LINEAR = 9729,
-		NEAREST_MIPMAP_NEAREST = 9984,
-		LINEAR_MIPMAP_NEAREST = 9985,
-		NEAREST_MIPMAP_LINEAR = 9986,
-		LINEAR_MIPMAP_LINEAR = 9987
+	struct Vertex {
+		glm::vec3 position;
+		glm::vec3 normal;
+		glm::vec4 tangent;
+		glm::vec2 tex_coord0;
 	};
 
-	enum WrapMode : int32_t
-	{
-		REPEAT = 10497,
-		CLAMP_TO_EDGE = 33071,
-		MIRRORED_REPEAT = 33648
-	};
-	
-	std::string name;
-	FilterMode mag_filter;
-	FilterMode min_filter;
-	WrapMode wrap_s;
-	WrapMode wrap_t;
-
-};
-
-
-struct Texture {
-	std::string name;
-	int sampler_index;
-	int image_index;
-};
-
-struct Image {
-	std::string name;
-	std::vector<uint8_t> pixels;
-	int32_t width, height;
-	int32_t channels;
-};
-
-struct Material {
-	enum AlphaMode {
-		OPAQUE,
-		MASK,
-		BLEND
+	enum DRAW_MODE {
+		POINTS,
+		LINES,
+		LINE_LOOP,
+		LINE_STRIP,
+		TRIANGLES,
+		TRIANGLE_STRIP,
+		TRIANGLE_FAN
 	};
 
-	std::string name;
+	struct Sampler {
 
-	bool double_sided = false;
-	glm::vec3 emissive = glm::vec3(0);
+		enum FilterMode : int32_t
+		{
+			NEAREST = 9728,
+			LINEAR = 9729,
+			NEAREST_MIPMAP_NEAREST = 9984,
+			LINEAR_MIPMAP_NEAREST = 9985,
+			NEAREST_MIPMAP_LINEAR = 9986,
+			LINEAR_MIPMAP_LINEAR = 9987
+		};
 
-	AlphaMode alpha_mode;
-	double alpha_cutoff = 0.5f;
+		enum WrapMode : int32_t
+		{
+			REPEAT = 10497,
+			CLAMP_TO_EDGE = 33071,
+			MIRRORED_REPEAT = 33648
+		};
 
-	int emmisive_texture_index;
-	int emmisive_texture_texcoord;
+		std::string name;
+		FilterMode mag_filter;
+		FilterMode min_filter;
+		WrapMode wrap_s;
+		WrapMode wrap_t;
 
-	int normal_texture_index;
-	int normal_texture_texcoord;
-
-	int occlusion_texture_index;
-	int occlusion_texture_texcoord;
-
-	glm::vec<4, double> base_color = glm::vec4(1);
-	int base_color_texture_index;
-	int base_color_texture_texcoord;
-
-	double metallic_factor = 1;
-	double roughness_factor = 1;
-	int metallic_roughness_texture_index;
-	int metallic_roughness_texture_texcoord;
-};
+	};
 
 
-struct Primitive {
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
+	struct Texture {
+		std::string name;
+		int sampler_index;
+		int image_index;
+	};
 
-	int material_index;
+	struct Image {
+		std::string name;
+		std::vector<uint8_t> pixels;
+		int32_t width, height;
+		int32_t channels;
+	};
 
-	DRAW_MODE mode;
-};
+	struct Material {
+		enum AlphaMode {
+			OPAQUE,
+			MASK,
+			BLEND
+		};
 
-struct Mesh {
-	std::string name;
+		std::string name;
 
-	std::vector<Primitive> primitives;
-};
+		bool double_sided = false;
+		glm::vec3 emissive = glm::vec3(0);
+
+		AlphaMode alpha_mode;
+		double alpha_cutoff = 0.5f;
+
+		int emmisive_texture_index;
+		int emmisive_texture_texcoord;
+
+		int normal_texture_index;
+		int normal_texture_texcoord;
+
+		int occlusion_texture_index;
+		int occlusion_texture_texcoord;
+
+		glm::vec<4, double> base_color = glm::vec4(1);
+		int base_color_texture_index;
+		int base_color_texture_texcoord;
+
+		double metallic_factor = 1;
+		double roughness_factor = 1;
+		int metallic_roughness_texture_index;
+		int metallic_roughness_texture_texcoord;
+	};
+
+
+	struct Primitive {
+		std::vector<Vertex> vertices;
+		std::vector<uint32_t> indices;
+
+		int material_index;
+
+		DRAW_MODE mode;
+	};
+
+	struct Mesh {
+		std::string name;
+
+		std::vector<Primitive> primitives;
+	};
 
 #pragma endregion
+
+}

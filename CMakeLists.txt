@@ -13,14 +13,19 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_executable(Dragibus)
 
 add_subdirectory(deps)
+add_subdirectory(shaders)
 add_subdirectory(src)
+
+if(MSVC)
+    target_compile_options(Dragibus PRIVATE /Zc:preprocessor)
+endif()
 
 target_link_libraries(Dragibus 
 	PRIVATE
 		deps
 )
 
-target_compile_definitions(Dragibus PRIVATE GLFW_INCLUDE_VULKAN STB_IMAGE_IMPLEMENTATION)
+target_compile_definitions(Dragibus PRIVATE GLFW_INCLUDE_VULKAN GLM_FORCE_DEPTH_ZERO_TO_ONE)
 target_include_directories(
 	Dragibus
 	PRIVATE

@@ -1,4 +1,4 @@
-#pragma once;
+#pragma once
 #include <optional>
 #include <glm/glm.hpp>
 
@@ -12,17 +12,10 @@ namespace Vulkan {
 
 	struct QueueFamilyIndices {
 		std::optional<uint32_t> graphics_family;
-		std::optional<uint32_t> present_family;
 		std::optional<uint32_t> transfer_family;
 
 		bool IsComplete() {
-			return graphics_family.has_value() && present_family.has_value();
+			return graphics_family.has_value() && transfer_family.has_value();
 		}
-	};
-
-	struct SwapChainSupportDetails {
-		VkSurfaceCapabilitiesKHR capabilities;
-		std::vector<VkSurfaceFormatKHR> formats;
-		std::vector<VkPresentModeKHR> present_modes;
 	};
 }

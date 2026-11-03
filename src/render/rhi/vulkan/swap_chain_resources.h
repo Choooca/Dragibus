@@ -1,23 +1,12 @@
 #pragma once
 
 #include <vector>
-#include <memory>
 
-#include <glfw/glfw3.h>
-
-#include <utils/custom_type.h>
-
-struct RenderContext;
+#include <vulkan/vulkan_raii.hpp>
 
 namespace Vulkan {
 
 	class Renderer;
-	class SwapChain;
-	class ImageView;
-	class Image;
-	class DeviceMemory;
-	class Framebuffer;
-	class CommandPool;
 
 	class SwapChainResources {
 
@@ -26,35 +15,31 @@ namespace Vulkan {
 		~SwapChainResources();
 
 		int GetSwapChainImageCount();
-		VkExtent2D GetSwapchainExtent();
+		vk::Extent2D &GetSwapChainExtent();
 
 		bool _frame_buffer_resized = false;
 
-		VkSwapchainKHR GetSwapchain();
-		VkFramebuffer GetFramebuffer(int swap_chain_index);
+		vk::raii::SwapchainKHR &GetSwapchain();
+
+		vk::Image GetSwapChainImage(int index);
+		vk::ImageView GetSwapChainImageView(int index);
+
+		vk::ImageView GetDepthImageView();
+		vk::Image GetDepthImage();
 
 	private:
 
 		Renderer* _renderer;
 
-		VkPresentModeKHR _present_mode;
-		VkExtent2D _extent;
-
-		std::unique_ptr<SwapChain> _swap_chain;
-		std::vector<VkImage> _images;
-		std::vector<ImageView> _image_views;
-		std::unique_ptr<Image> _depth_image;
-		std::unique_ptr<DeviceMemory> _depth_image_memory;
-		std::unique_ptr<ImageView> _depth_image_view;
-		std::vector<Framebuffer> _framebuffers;
+		vk::PresentModeKHR _present_mode;
+		vk::Extent2D _extent;
+		vk::raii::SwapchainKHR _swap_chain = nullptr;
+		std::vector<vk::Image> _images;
+		std::vector<vk::raii::ImageView> _image_views;
+		vk::raii::Image _depth_image = nullptr;
+		vk::raii::DeviceMemory _depth_image_memory = nullptr;
+		vk::raii::ImageView _depth_image_view = nullptr;
 
 		int _swap_chain_image_count;
-
-		VkPresentModeKHR ChooseSwapChainPresentMode(const SwapChainSupportDetails& swap_chain_support_details);
-		VkExtent2D GetSwapChainExtent(const SwapChainSupportDetails& swap_chain_support_details);
-
-		std::vector<VkImage> RetrieveSwapChainImage(const VkSwapchainKHR swap_chain);
-
-		std::vector<ImageView> CreateSwapChainImageViews(const std::vector<VkImage> swap_chain_images, const VkImageAspectFlags aspect_flags);
 	};
 }
