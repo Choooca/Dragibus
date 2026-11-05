@@ -7,5 +7,6 @@ target_sources(Dragibus
 		frame_resources.cpp
 		command_utils.cpp
 		resource_utils.cpp
+		model.cpp
 )
 

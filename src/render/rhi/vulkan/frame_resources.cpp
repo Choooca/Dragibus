@@ -4,16 +4,15 @@
 #include <render/rhi/vulkan/resource_utils.h>
 #include <render/rhi/vulkan/renderer.h>
 
-Vulkan::FrameResources::FrameResources(Renderer* renderer, vk::ImageView texture_image_view, vk::Sampler sampler)
+Vulkan::FrameResources::FrameResources(Renderer* renderer)
 	: _renderer(renderer)
 {
 	vk::CommandBufferAllocateInfo alloc_info{ .commandPool = renderer->GetGraphicsCommandPool(), .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = FRAME_IN_FLIGHT };
 	_in_flight_command_buffer = vk::raii::CommandBuffers(_renderer->GetDevice(), alloc_info);
 
-	std::array<vk::DescriptorPoolSize, 2> descriptor_pool_sizes = {
+	std::array<vk::DescriptorPoolSize, 1> descriptor_pool_sizes = {
 		{
-			{ .type = vk::DescriptorType::eUniformBuffer, .descriptorCount = FRAME_IN_FLIGHT },
-			{ .type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = FRAME_IN_FLIGHT }
+			{ .type = vk::DescriptorType::eUniformBuffer, .descriptorCount = FRAME_IN_FLIGHT }
 		}
 	};
 
@@ -26,7 +25,7 @@ Vulkan::FrameResources::FrameResources(Renderer* renderer, vk::ImageView texture
 
 	_descriptor_pool = vk::raii::DescriptorPool(renderer->GetDevice(), descriptor_pool_info);
 
-	std::vector<vk::DescriptorSetLayout> layouts(FRAME_IN_FLIGHT, renderer->GetDescriptorSetLayout());
+	std::vector<vk::DescriptorSetLayout> layouts(FRAME_IN_FLIGHT, renderer->GetObjDescriptorSetLayout());
 	vk::DescriptorSetAllocateInfo descriptor_set_alloc_info{
 		.descriptorPool = _descriptor_pool,
 		.descriptorSetCount = static_cast<uint32_t>(FRAME_IN_FLIGHT),
@@ -50,9 +49,8 @@ Vulkan::FrameResources::FrameResources(Renderer* renderer, vk::ImageView texture
 		_uniform_buffers_mapped.emplace_back(_uniform_buffers_memory[i].mapMemory(0, size));
 
 		vk::DescriptorBufferInfo buffer_info = { .buffer = _uniform_buffers[i], .offset = 0, .range = sizeof(Render::UniformBufferObject) };
-		vk::DescriptorImageInfo image_info = { .sampler = sampler, .imageView = texture_image_view, .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal };
 
-		std::array<vk::WriteDescriptorSet, 2> descriptor_writes = {
+		std::array<vk::WriteDescriptorSet, 1> descriptor_writes = {
 			{
 				{
 					.dstSet = _descriptor_sets[i],
@@ -61,14 +59,6 @@ Vulkan::FrameResources::FrameResources(Renderer* renderer, vk::ImageView texture
 					.descriptorCount = 1,
 					.descriptorType = vk::DescriptorType::eUniformBuffer,
 					.pBufferInfo = &buffer_info
-				},
-				{
-					.dstSet = _descriptor_sets[i],
-					.dstBinding = 1,
-					.dstArrayElement = 0,
-					.descriptorCount = 1,
-					.descriptorType = vk::DescriptorType::eCombinedImageSampler,
-					.pImageInfo = &image_info
 				}
 			}
 		};

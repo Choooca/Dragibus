@@ -12,7 +12,7 @@ namespace Vulkan {
 
 	public:
 
-		FrameResources(Renderer *renderer, vk::ImageView texture_image_view, vk::Sampler sampler);
+		FrameResources(Renderer *renderer);
 		~FrameResources();
 
 		static constexpr uint32_t FRAME_IN_FLIGHT = 3;

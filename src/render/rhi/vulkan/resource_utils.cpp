@@ -47,29 +47,35 @@ void Vulkan::CopyBuffer(const Renderer *renderer, vk::Buffer src, vk::Buffer dst
 	Vulkan::CommandUtils::EndSingleCommandBuffer(renderer->GetTransferQueue(), std::move(command_buffer));
 }
 
-std::pair<vk::raii::Image, vk::raii::DeviceMemory> Vulkan::CreateTexture(const Renderer* renderer, const std::string& path)
+std::pair<vk::raii::Image, vk::raii::DeviceMemory> Vulkan::CreateTexture(const Renderer* renderer, const std::string& path, vk::Format format)
 {
-	int tex_width, tex_height, n_channel;
-	stbi_uc* pixels = stbi_load((std::string(TEXTURES_DIR) + path).c_str(), &tex_width, &tex_height, &n_channel, STBI_rgb_alpha);
+	int width, height, n_channel;
+	stbi_uc* pixels = stbi_load((std::string(TEXTURES_DIR) + path).c_str(), &width, &height, &n_channel, STBI_rgb_alpha);
 
 	if (!pixels) {
 		THROW_RUNTIME_ERROR("Failed to load texture at {}", path);
 	}
 
-	vk::DeviceSize image_size = tex_height * tex_width * 4;
-	auto [staging_buffer, staging_memory] = CreateBuffer(renderer, image_size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
-	
-	void* data = staging_memory.mapMemory(0, image_size);
-	memcpy(data, pixels, image_size);
-	staging_memory.unmapMemory();
-	
+	std::vector<uint8_t> vec_pixel(pixels, pixels + height * width * 4);
 	stbi_image_free(pixels);
 
-	auto [image, image_memory] = CreateImage(renderer, tex_width, tex_height, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal);
+	return  CreateTexture(renderer, vec_pixel, width, height, 4, format);
+}
+
+std::pair<vk::raii::Image, vk::raii::DeviceMemory> Vulkan::CreateTexture(const Renderer* renderer, const std::vector<uint8_t> &pixels, uint32_t width, uint32_t height, uint32_t n_channels, vk::Format format)
+{
+	vk::DeviceSize image_size = height * width * n_channels;
+	auto [staging_buffer, staging_memory] = CreateBuffer(renderer, image_size, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
+
+	void* data = staging_memory.mapMemory(0, image_size);
+	memcpy(data, pixels.data(), image_size);
+	staging_memory.unmapMemory();
+
+	auto [image, image_memory] = CreateImage(renderer, width, height, format, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
 	vk::raii::CommandBuffer command_buffer = Vulkan::CommandUtils::BeginSingleCommandBuffer(renderer, renderer->GetGraphicsCommandPool());
 	Vulkan::CommandUtils::TransitionImageLayout(command_buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-	CopyBufferToImage(command_buffer, staging_buffer, image, tex_width, tex_height);
+	CopyBufferToImage(command_buffer, staging_buffer, image, width, height);
 	Vulkan::CommandUtils::TransitionImageLayout(command_buffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 	Vulkan::CommandUtils::EndSingleCommandBuffer(renderer->GetGraphicsQueue(), std::move(command_buffer));
 
@@ -139,7 +145,7 @@ vk::raii::Sampler Vulkan::CreateSampler(const Renderer* renderer)
 {
 	vk::PhysicalDeviceProperties properties = renderer->GetPhysicalDevice().getProperties();
 
-	vk::SamplerCreateInfo        sampler_info{ 
+	vk::SamplerCreateInfo sampler_info{ 
 		.magFilter = vk::Filter::eLinear,
 		.minFilter = vk::Filter::eLinear,
 		.mipmapMode = vk::SamplerMipmapMode::eLinear,

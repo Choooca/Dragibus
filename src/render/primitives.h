@@ -126,6 +126,18 @@ namespace Render {
 		std::vector<Primitive> primitives;
 	};
 
+	struct Model {
+		std::string name;
+		
+		std::vector<Mesh> meshes;
+		std::vector<Material> materials;
+		std::vector<Texture> textures;
+		std::vector<Sampler> samplers;
+		std::vector<Image> images;
+
+
+	};
+
 #pragma endregion
 
 }

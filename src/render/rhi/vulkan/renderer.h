@@ -18,15 +18,7 @@ namespace Vulkan {
 	class FrameResources;
 	class SwapChainResources;
 	class PrimitiveBuffer;
-
-	struct GPUPrimitive {
-
-		GPUPrimitive(Renderer* renderer, const Render::Primitive& primitive);
-
-		std::unique_ptr<PrimitiveBuffer> _vertex_buffer;
-		std::unique_ptr<PrimitiveBuffer> _index_buffer;
-		int _index_count = 0;
-	};
+	class Model;
 
 	struct Vertex : Render::Vertex {
 
@@ -81,6 +73,7 @@ namespace Vulkan {
 
 		void Init();
 		void Loop(Camera* camera);
+		void UpdateScene(const std::vector<Render::Model>& models);
 
 		GLFWwindow* GetWindow();
 		vk::PhysicalDevice GetPhysicalDevice() const;
@@ -96,9 +89,8 @@ namespace Vulkan {
 		vk::Queue GetTransferQueue() const;
 		vk::CommandPool GetGraphicsCommandPool() const;
 		vk::CommandPool GetTransferCommandPool() const;
-		vk::DescriptorSetLayout GetDescriptorSetLayout();
-
-		void AddScene(const std::vector<Render::Mesh>& meshes);
+		vk::DescriptorSetLayout GetObjDescriptorSetLayout() const;
+		vk::DescriptorSetLayout GetMatDescriptorSetLayout() const;
 
 		bool _frame_buffer_resized = false;
 
@@ -131,23 +123,20 @@ namespace Vulkan {
 		vk::raii::Queue _graphics_queue = nullptr;
 		vk::raii::Queue _transfer_queue = nullptr;
 		vk::SurfaceFormatKHR _surface_format;
-		vk::raii::DescriptorSetLayout _descriptor_set_layout = nullptr;
+		vk::raii::DescriptorSetLayout _obj_descriptor_set_layout = nullptr;
+		vk::raii::DescriptorSetLayout _mat_descriptor_set_layout = nullptr;
 		vk::raii::PipelineLayout _pipeline_layout = nullptr;
 		vk::raii::Pipeline _graphics_pipeline = nullptr;
 		vk::raii::CommandPool _graphics_command_pool = nullptr;
 		vk::raii::CommandPool _transfer_command_pool = nullptr;
 		std::vector<vk::raii::Semaphore> _render_finish_semaphore;
-		vk::raii::Image _texture_image = nullptr;
-		vk::raii::DeviceMemory _texture_memory = nullptr;
-		vk::raii::ImageView _texture_view = nullptr;
-		vk::raii::Sampler _texture_sampler = nullptr;
 		QueueFamilyIndices _queue_family_indices;
 		
 		vk::Format _depth_format;
 		std::unique_ptr<SwapChainResources> _swap_chain_ressources;
 		std::unique_ptr<FrameResources> _frame_resources;
 
-		std::vector<GPUPrimitive> _gpu_primitives;
+		std::vector<Vulkan::Model> _models;
 
 		static VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugCallback(
 			vk::DebugUtilsMessageSeverityFlagBitsEXT       severity,

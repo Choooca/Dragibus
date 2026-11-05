@@ -2,7 +2,7 @@
 #include <vector>
 
 namespace Render {
-	struct Mesh;
+	struct Model;
 }
 
 class Scene
@@ -12,10 +12,10 @@ public:
 	Scene();
 	~Scene();
 
-	const std::vector<Render::Mesh>& GetMeshes() const;
-	void SetMeshes(std::vector<Render::Mesh>&& meshes);
+	void AddModel(Render::Model&& model);
+	const std::vector<Render::Model>& GetModels() const;
 
 private:
 
-	std::vector<Render::Mesh> _meshes;
+	std::vector<Render::Model> _models;
 };

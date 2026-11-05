@@ -17,6 +17,7 @@
 #include <render/rhi/vulkan/command_utils.h>
 #include <render/rhi/vulkan/frame_resources.h>
 #include <render/rhi/vulkan/swap_chain_resources.h>
+#include <render/rhi/vulkan/model.h>
 
  Vulkan::Renderer::Renderer(GLFWwindow* window)
 	 : _window(window)
@@ -284,18 +285,32 @@
 
 	// ----------------- Descriptor Set -----------------
 	
-	std::array<vk::DescriptorSetLayoutBinding, 2> descriptor_set_layout_bindings{
+	std::array<vk::DescriptorSetLayoutBinding, 1> obj_descriptor_set_layout_bindings{
 		{ 
 			{ .binding = 0, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eVertex },
-			{ .binding = 1, .descriptorType = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eFragment } 
 		}
 	};
 
-	vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info = {
-		.bindingCount = static_cast<uint32_t>(descriptor_set_layout_bindings.size()),
-		.pBindings = descriptor_set_layout_bindings.data()
+	vk::DescriptorSetLayoutCreateInfo obj_descriptor_set_layout_create_info = {
+		.bindingCount = static_cast<uint32_t>(obj_descriptor_set_layout_bindings.size()),
+		.pBindings = obj_descriptor_set_layout_bindings.data()
 	};
-	_descriptor_set_layout = vk::raii::DescriptorSetLayout(_device, descriptor_set_layout_create_info);
+	_obj_descriptor_set_layout = vk::raii::DescriptorSetLayout(_device, obj_descriptor_set_layout_create_info);
+
+	std::array<vk::DescriptorSetLayoutBinding, 2> mat_descriptor_set_layout_bindings{
+		{
+			{ .binding = 0, .descriptorType = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = Vulkan::Material::MATERIAL_TEXTURE_COUNT, .stageFlags = vk::ShaderStageFlagBits::eFragment },
+			{ .binding = 1, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eFragment }
+		}
+	};
+
+	vk::DescriptorSetLayoutCreateInfo mat_descriptor_set_layout_create_info = {
+		.bindingCount = static_cast<uint32_t>(mat_descriptor_set_layout_bindings.size()),
+		.pBindings = mat_descriptor_set_layout_bindings.data()
+	};
+	_mat_descriptor_set_layout = vk::raii::DescriptorSetLayout(_device, mat_descriptor_set_layout_create_info);
+
+	std::array<vk::DescriptorSetLayout, 2> descriptor_set_layout{ _obj_descriptor_set_layout, _mat_descriptor_set_layout };
 
 	// ----------------- Graphics Pipeline -----------------
 
@@ -333,22 +348,23 @@
 		.depthBoundsTestEnable = vk::False,
 		.stencilTestEnable = vk::False 
 	};
-	vk::PipelineLayoutCreateInfo pipeline_layout_info{ .setLayoutCount = 1, .pSetLayouts = &*_descriptor_set_layout , .pushConstantRangeCount = 0 };
+	vk::PipelineLayoutCreateInfo pipeline_layout_info{ .setLayoutCount = static_cast<uint32_t>(descriptor_set_layout.size()), .pSetLayouts = descriptor_set_layout.data(), .pushConstantRangeCount = 0};
 	_pipeline_layout = vk::raii::PipelineLayout(_device, pipeline_layout_info);
 
 	vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipeline_info_chain = {
-	{ .stageCount = 2,
-	 .pStages = shader_stage_infos,
-	 .pVertexInputState = &vertex_input_info,
-	 .pInputAssemblyState = &input_assembly_info,
-	 .pViewportState = &viewport_state_info,
-	 .pRasterizationState = &rasterizer_info,
-	 .pMultisampleState = &multisampling_info,
-	 .pDepthStencilState = &depth_stencil_info,
-	 .pColorBlendState = &color_blending_info,
-	 .pDynamicState = &dynamic_state_info,
-	 .layout = _pipeline_layout,
-	 .renderPass = nullptr },
+	{ 
+		.stageCount = 2,
+		.pStages = shader_stage_infos,
+		.pVertexInputState = &vertex_input_info,
+		.pInputAssemblyState = &input_assembly_info,
+		.pViewportState = &viewport_state_info,
+		.pRasterizationState = &rasterizer_info,
+		.pMultisampleState = &multisampling_info,
+		.pDepthStencilState = &depth_stencil_info,
+		.pColorBlendState = &color_blending_info,
+		.pDynamicState = &dynamic_state_info,
+		.layout = _pipeline_layout,
+		.renderPass = nullptr },
 	{ .colorAttachmentCount = 1, .pColorAttachmentFormats = &_surface_format.format, .depthAttachmentFormat = _depth_format } };
 	_graphics_pipeline = vk::raii::Pipeline(_device, nullptr, pipeline_info_chain.get<vk::GraphicsPipelineCreateInfo>());
 
@@ -359,15 +375,10 @@
 		_render_finish_semaphore.emplace_back(_device, vk::SemaphoreCreateInfo());
 	}
 
-	std::tie(_texture_image, _texture_memory) = CreateTexture(this, "eliasdridi.jpg");
-	_texture_view = CreateImageView(this, _texture_image, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
-	_texture_sampler = CreateSampler(this);
-
-	_frame_resources = std::make_unique<FrameResources>(this, _texture_view, _texture_sampler);
+	_frame_resources = std::make_unique<FrameResources>(this);
 
 	glfwSetWindowUserPointer(_window, this);
 	glfwSetFramebufferSizeCallback(_window, FramebufferResizedCallback);
-
 }
 
 Vulkan::Renderer::~Renderer()
@@ -525,15 +536,21 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 		));
 	command_buffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), _swap_chain_ressources->GetSwapChainExtent()));
 
-	vk::DescriptorSet descriptor_set = _frame_resources->GetDescriptorSet(current_frame);
-	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 0, descriptor_set, nullptr);
+	vk::DescriptorSet obj_descriptor_set = _frame_resources->GetDescriptorSet(current_frame);
+	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 0, obj_descriptor_set, nullptr);
 
-	for (const GPUPrimitive& gpu_primitive : _gpu_primitives) {
-		vk::Buffer vertex_buffers[] = { gpu_primitive._vertex_buffer->GetBuffer() };
-		vk::DeviceSize offset = { 0 };
-		command_buffer.bindVertexBuffers(0, vertex_buffers, offset);
-		command_buffer.bindIndexBuffer(gpu_primitive._index_buffer->GetBuffer(), 0, vk::IndexType::eUint32);
-		command_buffer.drawIndexed(gpu_primitive._index_count, 1, 0, 0, 0);
+	for (const Vulkan::Model& model : _models) {
+		for (const Vulkan::Mesh& mesh : model.GetMeshes()) {
+			for (const Vulkan::Primitive& primitive : mesh.primitives) {
+
+				const Vulkan::Material &mat = primitive.GetMaterialIndex() != -1 ? model.GetMaterials()[primitive.GetMaterialIndex()] : model.GetMaterials().back();
+				command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 1, mat.descriptor_sets, nullptr);
+				vk::DeviceSize offset = { 0 };
+				command_buffer.bindVertexBuffers(0, primitive.GetVertexBuffer().GetBuffer(), offset);
+				command_buffer.bindIndexBuffer(primitive.GetIndexBuffer().GetBuffer(), 0, vk::IndexType::eUint32);
+				command_buffer.drawIndexed(primitive.GetIndexCount(), 1, 0, 0, 0);
+			}
+		}
 	}
 
 	command_buffer.endRendering();
@@ -612,6 +629,18 @@ void Vulkan::Renderer::Loop(Camera* camera)
 	_current_frame = (_current_frame + 1) % _frame_resources->FRAME_IN_FLIGHT;
 }
 
+void Vulkan::Renderer::UpdateScene(const std::vector<Render::Model>& models)
+{
+	_device.waitIdle();
+
+	_models.clear();
+
+	_models.reserve(models.size());
+	for (const auto& model : models) {
+		_models.emplace_back(this, model);
+	}
+}
+
 GLFWwindow* Vulkan::Renderer::GetWindow() { return _window; }
 
 vk::PhysicalDevice Vulkan::Renderer::GetPhysicalDevice() const { return _physical_device; }
@@ -620,19 +649,5 @@ const Vulkan::QueueSharing& Vulkan::Renderer::GetQueueSharing() const { return _
 
 const vk::raii::Device &Vulkan::Renderer::GetDevice() const { return _device; }
 
-
-vk::DescriptorSetLayout Vulkan::Renderer::GetDescriptorSetLayout() { return _descriptor_set_layout; }
-
-Vulkan::GPUPrimitive::GPUPrimitive(Renderer* renderer, const Render::Primitive& primitive) {
-	_vertex_buffer = std::make_unique<PrimitiveBuffer>(CreatePrimitiveBuffer(renderer, primitive.vertices, vk::BufferUsageFlagBits::eVertexBuffer));
-	_index_buffer = std::make_unique<PrimitiveBuffer>(CreatePrimitiveBuffer(renderer, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer));
-	_index_count = primitive.indices.size();
-}
-
-void Vulkan::Renderer::AddScene(const std::vector<Render::Mesh>& meshes) {
-	for (const Render::Mesh& mesh : meshes) {
-		for (const Render::Primitive& primitive : mesh.primitives) {
-			_gpu_primitives.emplace_back(this, primitive);
-		}
-	}
-}
+vk::DescriptorSetLayout Vulkan::Renderer::GetObjDescriptorSetLayout() const { return _obj_descriptor_set_layout; }
+vk::DescriptorSetLayout Vulkan::Renderer::GetMatDescriptorSetLayout() const { return _mat_descriptor_set_layout; }

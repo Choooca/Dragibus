@@ -19,8 +19,8 @@ namespace Vulkan {
 
 	private:
 
-		vk::raii::DeviceMemory _device_memory;
-		vk::raii::Buffer _buffer;
+		vk::raii::DeviceMemory _device_memory = nullptr;
+		vk::raii::Buffer _buffer = nullptr;
 	};
 
 	uint32_t FindMemoryType(vk::PhysicalDevice physical_device, uint32_t type_filter, vk::MemoryPropertyFlags properties);
@@ -50,10 +50,19 @@ namespace Vulkan {
 		return PrimitiveBuffer(std::move(primitive_buffer), std::move(primitive_device_memory));
 	}
 
+	template<typename T> PrimitiveBuffer CreatePrimitiveBuffer(const Renderer* renderer, const T& primitive_data, vk::BufferUsageFlags buffer_usage) {
+		std::vector<T> vec = {
+			primitive_data
+		};
+
+		return CreatePrimitiveBuffer(renderer, vec, buffer_usage);
+	}
+
 	std::pair<vk::raii::Image, vk::raii::DeviceMemory> CreateImage(const Renderer *renderer, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties);
 	vk::raii::ImageView CreateImageView(const Renderer* renderer, vk::Image image, vk::Format format, vk::ImageAspectFlags aspect_flags);
 
-	std::pair<vk::raii::Image, vk::raii::DeviceMemory> CreateTexture(const Renderer* renderer, const std::string& path);
+	std::pair<vk::raii::Image, vk::raii::DeviceMemory> CreateTexture(const Renderer* renderer, const std::string& path, vk::Format format);
+	std::pair<vk::raii::Image, vk::raii::DeviceMemory> CreateTexture(const Renderer* renderer, const std::vector<uint8_t>& pixels, uint32_t width, uint32_t height, uint32_t n_channels, vk::Format format);
 
 	void CopyBufferToImage(vk::raii::CommandBuffer& command_buffer, const vk::raii::Buffer& buffer, vk::raii::Image &image, uint32_t width, uint32_t height);
 

@@ -5,10 +5,6 @@
 Scene::Scene() = default;
 Scene::~Scene() = default;
 
-const std::vector<Render::Mesh>& Scene::GetMeshes() const {
-	return _meshes;
-}
+void Scene::AddModel(Render::Model&& model) { _models.push_back(std::move(model)); }
 
-void Scene::SetMeshes(std::vector<Render::Mesh>&& meshes) {
-	_meshes = std::move(meshes);
-}
+const std::vector<Render::Model>& Scene::GetModels() const { return _models; }

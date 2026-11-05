@@ -3,71 +3,79 @@
 #include <sstream>
 #include <unordered_map>
 
+#include <stb_image.h>
+
 #include <utils/build_macro.h>
 #include <utils/debug_macro.h>
 
 #include <render/primitives.h>
 
-#pragma region CTors/Dtors
-
-Render::GLTFModel::GLTFModel(const std::string& model_name) {
-
+Render::Model Render::GLTF::ParseGLTFModel(const std::string& model_name)
+{
 	const std::string& model_path = std::string(MODELS_DIR) + model_name;
 
-	tg3_parse_options_init(&_options);
-	tg3_error_stack_init(&_errors);
-	tg3_error_code err = tg3_parse_file(&_model, &_errors, model_path.data(), model_path.length(), &_options);
+	tg3_parse_options options;
+	tg3_error_stack errors{};
+	tg3_model model{};
+
+	struct TG3Raii {
+		tg3_model& model;
+		tg3_error_stack& errors;
+		~TG3Raii() {
+			tg3_model_free(&model);
+			tg3_error_stack_free(&errors);
+		}
+	};
+	TG3Raii tg3_raii{ model, errors };
+
+	tg3_parse_options_init(&options);
+	tg3_error_stack_init(&errors);
+	tg3_error_code err = tg3_parse_file(&model, &errors, model_path.data(), model_path.length(), &options);
 	if (err != TG3_OK) {
 
 		std::stringstream msg;
 
-		for (uint32_t i = 0; i < _errors.count; i++) {
-			msg << (int)_errors.entries[i].severity << " " << (_errors.entries[i].message ? _errors.entries[i].message : "(null)") << "\n";
+		for (uint32_t i = 0; i < errors.count; i++) {
+			msg << (int)errors.entries[i].severity << " " << (errors.entries[i].message ? errors.entries[i].message : "(null)") << "\n";
 		}
 
 		THROW_RUNTIME_ERROR("{}", msg.str());
 	}
 
-	_meshes.resize(_model.meshes_count);
-	for (uint32_t i = 0; i < _model.meshes_count; ++i) {
-		_meshes[i] = ParseMesh(_model.meshes[i]);
+	const std::filesystem::path base_dir = std::filesystem::path(model_path).parent_path();
+
+	Render::Model ret = {};
+
+	ret.meshes.resize(model.meshes_count);
+	for (uint32_t i = 0; i < model.meshes_count; ++i) {
+		ret.meshes[i] = ParseMesh(model.meshes[i], model);
 	}
 
-	_materials.resize(_model.materials_count);
-	for (uint32_t i = 0; i <  _model.materials_count; ++i) {
-		_materials[i] = ParseMaterial(_model.materials[i]);
+	ret.materials.resize(model.materials_count);
+	for (uint32_t i = 0; i < model.materials_count; ++i) {
+		ret.materials[i] = ParseMaterial(model.materials[i]);
 	}
 
-	_textures.resize(_model.textures_count);
-	for (uint32_t i = 0; i < _model.textures_count; ++i) {
-		_textures[i] = ParseTexture(_model.textures[i]);
+	ret.textures.resize(model.textures_count);
+	for (uint32_t i = 0; i < model.textures_count; ++i) {
+		ret.textures[i] = ParseTexture(model.textures[i]);
 	}
 
-	_samplers.resize(_model.samplers_count);
-	for (uint32_t i = 0; i < _model.samplers_count; ++i) {
-		_samplers[i] = ParseSampler(_model.samplers[i]);
+	ret.samplers.resize(model.samplers_count);
+	for (uint32_t i = 0; i < model.samplers_count; ++i) {
+		ret.samplers[i] = ParseSampler(model.samplers[i]);
 	}
 
-	_images.resize(_model.images_count);
-	for (uint32_t i = 0; i < _model.images_count; ++i) {
-		_images[i] = ParseImage(_model.images[i]);
+	ret.images.resize(model.images_count);
+	for (uint32_t i = 0; i < model.images_count; ++i) {
+		ret.images[i] = ParseImage(model.images[i], model, base_dir);
 	}
 
+	return ret;
 }
 
-Render::GLTFModel::~GLTFModel() {
-	tg3_model_free(&_model);
-	tg3_error_stack_free(&_errors);
-}
 
-std::vector<Render::Mesh> && Render::GLTFModel::GetMeshes()
-{
-	return std::move(_meshes);
-}
-
-#pragma endregion
-
-Render::Mesh Render::GLTFModel::ParseMesh(const tg3_mesh &mesh)
+Render::Mesh Render::GLTF::ParseMesh(const tg3_mesh& mesh, const tg3_model& model)
 {
 	Mesh out{};
 
@@ -77,13 +85,13 @@ Render::Mesh Render::GLTFModel::ParseMesh(const tg3_mesh &mesh)
 	//Primitives
 	out.primitives.resize(mesh.primitives_count);
 	for (uint32_t i = 0; i < mesh.primitives_count; ++i) {
-		out.primitives[i] = ParsePrimitive(mesh.primitives[i]);
+		out.primitives[i] = ParsePrimitive(mesh.primitives[i], model);
 	}
 
 	return out;
 }
 
-Render::Material Render::GLTFModel::ParseMaterial(const tg3_material& material)
+Render::Material Render::GLTF::ParseMaterial(const tg3_material& material)
 {
 	Material out = {};
 
@@ -133,7 +141,7 @@ Render::Material Render::GLTFModel::ParseMaterial(const tg3_material& material)
 	return out;
 }
 
-Render::Texture Render::GLTFModel::ParseTexture(const tg3_texture& texture)
+Render::Texture Render::GLTF::ParseTexture(const tg3_texture& texture)
 {
 	Texture out{};
 
@@ -144,7 +152,7 @@ Render::Texture Render::GLTFModel::ParseTexture(const tg3_texture& texture)
 	return out;
 }
 
-Render::Sampler Render::GLTFModel::ParseSampler(const tg3_sampler& sampler)
+Render::Sampler Render::GLTF::ParseSampler(const tg3_sampler& sampler)
 {
 	Sampler out{};
 	out.name.assign(sampler.name.data, sampler.name.len);
@@ -156,19 +164,39 @@ Render::Sampler Render::GLTFModel::ParseSampler(const tg3_sampler& sampler)
 	return out;
 }
 
-Render::Image Render::GLTFModel::ParseImage(const tg3_image& image)
+Render::Image Render::GLTF::ParseImage(const tg3_image& image, const tg3_model &model, const std::filesystem::path &base_dir)
 {
-	Image out{};
+	Render::Image out{};
+
 	out.name.assign(image.name.data, image.name.len);
-	out.channels = image.component;
-	out.width = image.width;
-	out.height = image.height;
-	out.pixels = std::vector<uint8_t>(image.image.data, image.image.data + image.image.count);
+
+	stbi_uc* pixels = nullptr;
+	int width, height, channel;
+
+	if (image.buffer_view != -1) {
+
+		const tg3_buffer_view& view = model.buffer_views[image.buffer_view];
+		const tg3_buffer& buffer = model.buffers[view.buffer];
+		pixels = stbi_load_from_memory(buffer.data.data + view.byte_offset, static_cast<int>(view.byte_length), &width, &height, &channel, STBI_rgb_alpha);
+	}
+	else {
+		const std::filesystem::path path = base_dir / std::string(image.uri.data, image.uri.len);
+		pixels = stbi_load(path.string().c_str(), &width, &height, &channel, STBI_rgb_alpha);
+	}
+
+	if (!pixels)
+		THROW_RUNTIME_ERROR("Failed to load image {} : {}", out.name, stbi_failure_reason());
+
+	out.pixels.assign(pixels, pixels + static_cast<size_t>(width) * height * 4);
+	out.channels = 4;
+	out.width = width;
+	out.height = height;
+	stbi_image_free(pixels);
 
 	return out;
 }
 
-Render::Primitive Render::GLTFModel::ParsePrimitive(const tg3_primitive& primitive)
+Render::Primitive Render::GLTF::ParsePrimitive(const tg3_primitive& primitive, const tg3_model &model)
 {
 	Primitive out{};
 
@@ -190,11 +218,11 @@ Render::Primitive Render::GLTFModel::ParsePrimitive(const tg3_primitive& primiti
 		out.indices = {};
 	}
 	else {
-		tg3_accessor indices_accessor = _model.accessors[primitive.indices];
+		tg3_accessor indices_accessor = model.accessors[primitive.indices];
 
 		if (indices_accessor.buffer_view != -1) {
-			tg3_buffer_view indices_buffer_view = _model.buffer_views[indices_accessor.buffer_view];
-			tg3_buffer indices_buffer = _model.buffers[indices_buffer_view.buffer];
+			tg3_buffer_view indices_buffer_view = model.buffer_views[indices_accessor.buffer_view];
+			tg3_buffer indices_buffer = model.buffers[indices_buffer_view.buffer];
 			uint64_t offset = indices_accessor.byte_offset + indices_buffer_view.byte_offset;
 			uint32_t stride = tg3_accessor_byte_stride(&indices_accessor, &indices_buffer_view);
 
@@ -227,7 +255,7 @@ Render::Primitive Render::GLTFModel::ParsePrimitive(const tg3_primitive& primiti
 		std::string key;
 		key.assign((primitive.attributes + i)->key.data, (primitive.attributes + i)->key.len);
 		if (key == "POSITION") {
-			vertice_count = _model.accessors[primitive.attributes[i].value].count;
+			vertice_count = model.accessors[primitive.attributes[i].value].count;
 		}
  	}
 	out.vertices.resize(vertice_count);
@@ -235,12 +263,12 @@ Render::Primitive Render::GLTFModel::ParsePrimitive(const tg3_primitive& primiti
 	for (uint32_t i = 0; i < primitive.attributes_count; ++i) {
 		std::string key;
 		key.assign((primitive.attributes + i)->key.data, (primitive.attributes + i)->key.len);
-		tg3_accessor accessor = _model.accessors[(primitive.attributes + i)->value];
+		tg3_accessor accessor = model.accessors[(primitive.attributes + i)->value];
 
 		if (accessor.buffer_view != -1) {
 			
-			tg3_buffer_view buffer_view = _model.buffer_views[accessor.buffer_view];
-			tg3_buffer buffer = _model.buffers[buffer_view.buffer];
+			tg3_buffer_view buffer_view = model.buffer_views[accessor.buffer_view];
+			tg3_buffer buffer = model.buffers[buffer_view.buffer];
 			uint64_t offset = accessor.byte_offset + buffer_view.byte_offset;
 			uint32_t stride = tg3_accessor_byte_stride(&accessor, &buffer_view);
 
