@@ -66,7 +66,6 @@ namespace Vulkan {
 		QueueSharing _queue_sharing;
 		std::vector<vk::SurfaceFormatKHR> _available_formats;
 		std::vector<vk::PresentModeKHR> _available_present_modes;
-		vk::SurfaceCapabilitiesKHR _surface_capabilities;
 		vk::raii::Device _device = nullptr;
 		vk::raii::Queue _graphics_queue = nullptr;
 		vk::raii::Queue _transfer_queue = nullptr;

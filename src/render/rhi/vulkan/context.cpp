@@ -165,7 +165,6 @@ Vulkan::Context::Context(GLFWwindow *window)
 
 		_available_formats = std::move(available_formats);
 		_available_present_modes = std::move(available_present_modes);
-		_surface_capabilities = physical_device.getSurfaceCapabilitiesKHR(*_surface);
 		_physical_device = physical_device;
 		_queue_family_indices = queue_family_indices;
 		break;
@@ -295,7 +294,7 @@ const vk::raii::SurfaceKHR& Vulkan::Context::GetSurface() const { return _surfac
 
 const std::vector<vk::PresentModeKHR>& Vulkan::Context::GetAvailablePresentModes() const { return _available_present_modes; }
 
-vk::SurfaceCapabilitiesKHR Vulkan::Context::GetSurfaceCapabilities() const { return _surface_capabilities; }
+vk::SurfaceCapabilitiesKHR Vulkan::Context::GetSurfaceCapabilities() const { return _physical_device.getSurfaceCapabilitiesKHR(_surface); }
 
 Vulkan::QueueFamilyIndices Vulkan::Context::GetQueueFamilyIndices() const { return _queue_family_indices; }
 
