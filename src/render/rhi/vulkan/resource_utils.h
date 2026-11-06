@@ -10,9 +10,10 @@
 
 namespace Vulkan {
 
-	class PrimitiveBuffer {
+	class DeviceLocalBuffer {
 	public :
-		PrimitiveBuffer(vk::raii::Buffer&& buffer, vk::raii::DeviceMemory&& device_memory);
+		DeviceLocalBuffer() = default;
+		DeviceLocalBuffer(vk::raii::Buffer&& buffer, vk::raii::DeviceMemory&& device_memory);
 
 		vk::Buffer GetBuffer() const;
 		vk::DeviceMemory GetDeviceMemory() const;
@@ -30,7 +31,7 @@ namespace Vulkan {
 	void CopyBuffer(const Context &context, vk::Buffer src, vk::Buffer dst, vk::DeviceSize size);
 
 	template<typename T>
-	PrimitiveBuffer CreatePrimitiveBuffer(const Context &context, const std::vector<T>& primitive_data, vk::BufferUsageFlags buffer_usage)
+	DeviceLocalBuffer CreateDeviceLocalBuffer(const Context &context, const std::vector<T>& primitive_data, vk::BufferUsageFlags buffer_usage)
 	{
 		if (primitive_data.empty())
 			THROW_INVALID_ARGUMENT("Primitive data can't be empty");
@@ -47,15 +48,15 @@ namespace Vulkan {
 
 		CopyBuffer(context, staging_buffer, primitive_buffer, buffer_size);
 
-		return PrimitiveBuffer(std::move(primitive_buffer), std::move(primitive_device_memory));
+		return DeviceLocalBuffer(std::move(primitive_buffer), std::move(primitive_device_memory));
 	}
 
-	template<typename T> PrimitiveBuffer CreatePrimitiveBuffer(const Context& context, const T& primitive_data, vk::BufferUsageFlags buffer_usage) {
+	template<typename T> DeviceLocalBuffer CreateDeviceLocalBuffer(const Context& context, const T& primitive_data, vk::BufferUsageFlags buffer_usage) {
 		std::vector<T> vec = {
 			primitive_data
 		};
 
-		return CreatePrimitiveBuffer(context, vec, buffer_usage);
+		return CreateDeviceLocalBuffer(context, vec, buffer_usage);
 	}
 
 	std::pair<vk::raii::Image, vk::raii::DeviceMemory> CreateImage(const Context& context, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties);

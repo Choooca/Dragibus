@@ -67,8 +67,8 @@ Vulkan::Model::Model(const Vulkan::Context& context, const Vulkan::Renderer& ren
 		for (const auto& primitive : mesh.primitives) {
 
 			gpu_mesh.primitives.push_back({
-					CreatePrimitiveBuffer(context, primitive.vertices, vk::BufferUsageFlagBits::eVertexBuffer),
-					CreatePrimitiveBuffer(context, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer),
+					CreateDeviceLocalBuffer(context, primitive.vertices, vk::BufferUsageFlagBits::eVertexBuffer),
+					CreateDeviceLocalBuffer(context, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer),
 					static_cast<uint32_t>(primitive.indices.size()),
 					primitive.material_index
 				});
@@ -179,7 +179,7 @@ Vulkan::Material Vulkan::Model::CreateMaterial(
 		.roughness_factor = roughness_factor
 	};
 
-	PrimitiveBuffer uniform_buffer = CreatePrimitiveBuffer<Material::Uniform>(context, uniform_data, vk::BufferUsageFlagBits::eUniformBuffer);
+	DeviceLocalBuffer uniform_buffer = CreateDeviceLocalBuffer<Material::Uniform>(context, uniform_data, vk::BufferUsageFlagBits::eUniformBuffer);
 
 	vk::DescriptorBufferInfo descriptor_buffer_info = {
 		.buffer = uniform_buffer.GetBuffer(),
@@ -218,7 +218,7 @@ Vulkan::Material Vulkan::Model::CreateMaterial(
 	};
 }
 
-const Vulkan::PrimitiveBuffer& Vulkan::Primitive::GetVertexBuffer() const { return vertex_buffer; }
-const Vulkan::PrimitiveBuffer& Vulkan::Primitive::GetIndexBuffer() const { return index_buffer; }
+const Vulkan::DeviceLocalBuffer& Vulkan::Primitive::GetVertexBuffer() const { return vertex_buffer; }
+const Vulkan::DeviceLocalBuffer& Vulkan::Primitive::GetIndexBuffer() const { return index_buffer; }
 uint32_t Vulkan::Primitive::GetIndexCount() const { return index_count; }
 int Vulkan::Primitive::GetMaterialIndex() const { return material_index; }

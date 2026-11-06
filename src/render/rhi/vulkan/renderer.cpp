@@ -50,32 +50,78 @@
 
 	// ----------------- Descriptor Set -----------------
 	
-	std::array<vk::DescriptorSetLayoutBinding, 1> obj_descriptor_set_layout_bindings{
-		{ 
-			{ .binding = 0, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eVertex },
-		}
+	_scn_descriptor_set_layout = CreateDescriptorSetLayout({
+		{ .binding = 0, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eFragment }
+		});
+
+	_obj_descriptor_set_layout = CreateDescriptorSetLayout({ 
+			{ .binding = 0, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eVertex } 
+		});
+
+	_mat_descriptor_set_layout = CreateDescriptorSetLayout({
+				{ .binding = 0, .descriptorType = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = Vulkan::Material::MATERIAL_TEXTURE_COUNT, .stageFlags = vk::ShaderStageFlagBits::eFragment },
+				{ .binding = 1, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eFragment }
+		});
+
+	std::array<vk::DescriptorSetLayout, 3> descriptor_set_layout{ 
+		_scn_descriptor_set_layout,
+		_obj_descriptor_set_layout,
+		_mat_descriptor_set_layout 
 	};
 
-	vk::DescriptorSetLayoutCreateInfo obj_descriptor_set_layout_create_info = {
-		.bindingCount = static_cast<uint32_t>(obj_descriptor_set_layout_bindings.size()),
-		.pBindings = obj_descriptor_set_layout_bindings.data()
-	};
-	_obj_descriptor_set_layout = vk::raii::DescriptorSetLayout(_context.GetDevice(), obj_descriptor_set_layout_create_info);
+	// ----------------- Lights -----------------
 
-	std::array<vk::DescriptorSetLayoutBinding, 2> mat_descriptor_set_layout_bindings{
+	std::array<vk::DescriptorPoolSize, 1> light_pool_sizes = { 
 		{
-			{ .binding = 0, .descriptorType = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = Vulkan::Material::MATERIAL_TEXTURE_COUNT, .stageFlags = vk::ShaderStageFlagBits::eFragment },
-			{ .binding = 1, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eFragment }
+			{ .type = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1 }
+		} 
+	};
+
+	vk::DescriptorPoolCreateInfo light_descriptor_pool_info = {
+		.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+		.maxSets = 1,
+		.poolSizeCount = static_cast<uint32_t>(light_pool_sizes.size()),
+		.pPoolSizes = light_pool_sizes.data()
+	};
+
+	_light_descriptor_pool = vk::raii::DescriptorPool(_context.GetDevice(), light_descriptor_pool_info);
+
+	std::array<vk::DescriptorSetLayout, 1> light_descriptor_set_layouts = { _scn_descriptor_set_layout };
+	vk::DescriptorSetAllocateInfo alloc_info = {
+		.descriptorPool = _light_descriptor_pool,
+		.descriptorSetCount = 1,
+		.pSetLayouts = light_descriptor_set_layouts.data()
+	};
+
+	_light_descriptor_sets = _context.GetDevice().allocateDescriptorSets(alloc_info);
+
+	DirectionalLight dir_light = {
+		.direction = glm::normalize(glm::vec3({ -.2, -.9, -.5})),
+		.color = glm::vec4(1.0, 1.0, 1.0, 1.0)
+	};
+
+	_dir_light_buffer = CreateDeviceLocalBuffer(_context, dir_light, vk::BufferUsageFlagBits::eUniformBuffer);
+
+	vk::DescriptorBufferInfo dir_light_info = {
+		.buffer = _dir_light_buffer.GetBuffer(),
+		.offset = 0,
+		.range = sizeof(DirectionalLight)
+	};
+
+	std::array<vk::WriteDescriptorSet, 1> light_write_descriptor_set = {
+		{
+			{
+				.dstSet = _light_descriptor_sets.front(),
+				.dstBinding = 0,
+				.dstArrayElement = 0,
+				.descriptorCount = 1,
+				.descriptorType = vk::DescriptorType::eUniformBuffer,
+				.pBufferInfo = &dir_light_info
+			}
 		}
 	};
 
-	vk::DescriptorSetLayoutCreateInfo mat_descriptor_set_layout_create_info = {
-		.bindingCount = static_cast<uint32_t>(mat_descriptor_set_layout_bindings.size()),
-		.pBindings = mat_descriptor_set_layout_bindings.data()
-	};
-	_mat_descriptor_set_layout = vk::raii::DescriptorSetLayout(_context.GetDevice(), mat_descriptor_set_layout_create_info);
-
-	std::array<vk::DescriptorSetLayout, 2> descriptor_set_layout{ _obj_descriptor_set_layout, _mat_descriptor_set_layout };
+	_context.GetDevice().updateDescriptorSets(light_write_descriptor_set, {});
 
 	// ----------------- Graphics Pipeline -----------------
 
@@ -182,6 +228,7 @@ void Vulkan::Renderer::UpdateUniformBuffer(uint32_t current_frame, Camera* camer
 	ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
 	ubo.view = glm::lookAt(camera->GetPosition(), camera->GetPosition() + camera->GetForward(), glm::vec3(0, 1, 0));
 	ubo.perspective = glm::perspective(glm::radians(45.0f), _swap_chain_ressources->GetSwapChainExtent().width / (float)_swap_chain_ressources->GetSwapChainExtent().height, 0.001f, 1000.0f);
+	ubo.normal = glm::transpose(glm::inverse(ubo.model));
 
 	memcpy(_frame_resources->GetUniformBufferMappedMemory(current_frame), &ubo, sizeof(Render::UniformBufferObject));
 }
@@ -244,14 +291,16 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 	command_buffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), _swap_chain_ressources->GetSwapChainExtent()));
 
 	vk::DescriptorSet obj_descriptor_set = _frame_resources->GetDescriptorSet(current_frame);
-	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 0, obj_descriptor_set, nullptr);
+	vk::DescriptorSet light_descriptor_set = _light_descriptor_sets[0];
+	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 0, light_descriptor_set, nullptr);
+	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 1, obj_descriptor_set, nullptr);
 
 	for (const Vulkan::Model& model : _models) {
 		for (const Vulkan::Mesh& mesh : model.GetMeshes()) {
 			for (const Vulkan::Primitive& primitive : mesh.primitives) {
 
 				const Vulkan::Material &mat = primitive.GetMaterialIndex() != -1 ? model.GetMaterials()[primitive.GetMaterialIndex()] : model.GetMaterials().back();
-				command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 1, mat.descriptor_sets, nullptr);
+				command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 2, mat.descriptor_sets, nullptr);
 				vk::DeviceSize offset = { 0 };
 				command_buffer.bindVertexBuffers(0, primitive.GetVertexBuffer().GetBuffer(), offset);
 				command_buffer.bindIndexBuffer(primitive.GetIndexBuffer().GetBuffer(), 0, vk::IndexType::eUint32);
@@ -270,6 +319,15 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 		, vk::ImageAspectFlagBits::eColor);
 
 	command_buffer.end();
+}
+
+vk::raii::DescriptorSetLayout Vulkan::Renderer::CreateDescriptorSetLayout(const std::vector<vk::DescriptorSetLayoutBinding>& bidings)
+{
+	vk::DescriptorSetLayoutCreateInfo mat_descriptor_set_layout_create_info = {
+		.bindingCount = static_cast<uint32_t>(bidings.size()),
+		.pBindings = bidings.data()
+	};
+	return vk::raii::DescriptorSetLayout(_context.GetDevice(), mat_descriptor_set_layout_create_info);
 }
 
 void Vulkan::Renderer::Loop(Camera* camera)

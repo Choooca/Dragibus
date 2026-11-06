@@ -13,10 +13,10 @@ namespace Render {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 perspective;
+		alignas(16) glm::mat4 normal;
 	};
 
 #pragma region  Model
-
 
 	struct Vertex {
 		glm::vec3 position;

@@ -14,9 +14,48 @@ namespace Render {
 
 namespace Vulkan {
 
-	class PrimitiveBuffer;
+	class DeviceLocalBuffer;
 	class Renderer;
 	class Context;
+
+	struct Vertex : Render::Vertex {
+
+		static vk::VertexInputBindingDescription GetBindingDescription() {
+			vk::VertexInputBindingDescription out{
+				.binding = 0,
+				.stride = sizeof(Vertex),
+				.inputRate = vk::VertexInputRate::eVertex
+			};
+
+			return out;
+		}
+
+		static std::array<vk::VertexInputAttributeDescription, 4> GetAttributeDescription() {
+			std::array<vk::VertexInputAttributeDescription, 4> out{};
+
+			out[0].binding = 0;
+			out[0].location = 0;
+			out[0].format = vk::Format::eR32G32B32Sfloat;
+			out[0].offset = offsetof(Vertex, position);
+
+			out[1].binding = 0;
+			out[1].location = 1;
+			out[1].format = vk::Format::eR32G32B32Sfloat;
+			out[1].offset = offsetof(Vertex, normal);
+
+			out[2].binding = 0;
+			out[2].location = 2;
+			out[2].format = vk::Format::eR32G32B32A32Sfloat;
+			out[2].offset = offsetof(Vertex, tangent);
+
+			out[3].binding = 0;
+			out[3].location = 3;
+			out[3].format = vk::Format::eR32G32Sfloat;;
+			out[3].offset = offsetof(Vertex, tex_coord0);
+
+			return out;
+		}
+	};
 
 	struct Image {
 		std::string name;
@@ -39,18 +78,18 @@ namespace Vulkan {
 
 		std::string name = "";
 		vk::DescriptorSet descriptor_sets = nullptr;
-		PrimitiveBuffer uniform_buffer;
+		DeviceLocalBuffer uniform_buffer;
 	};
 
 	struct Primitive {
 
-		const PrimitiveBuffer& GetVertexBuffer() const;
-		const PrimitiveBuffer& GetIndexBuffer() const;
+		const DeviceLocalBuffer& GetVertexBuffer() const;
+		const DeviceLocalBuffer& GetIndexBuffer() const;
 		uint32_t GetIndexCount() const;
 		int GetMaterialIndex() const;
 
-		PrimitiveBuffer vertex_buffer;
-		PrimitiveBuffer index_buffer;
+		DeviceLocalBuffer vertex_buffer;
+		DeviceLocalBuffer index_buffer;
 		uint32_t index_count = 0;
 		int material_index = -1;
 	};

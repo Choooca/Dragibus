@@ -161,10 +161,10 @@ vk::raii::Sampler Vulkan::CreateSampler(const Context& context)
 	return vk::raii::Sampler(context.GetDevice(), sampler_info);
 }
 
-Vulkan::PrimitiveBuffer::PrimitiveBuffer(vk::raii::Buffer&& buffer, vk::raii::DeviceMemory&& device_memory)
+Vulkan::DeviceLocalBuffer::DeviceLocalBuffer(vk::raii::Buffer&& buffer, vk::raii::DeviceMemory&& device_memory)
 	: _device_memory(std::move(device_memory)), _buffer(std::move(buffer))
 {}
 
-vk::Buffer Vulkan::PrimitiveBuffer::GetBuffer() const { return _buffer; }
+vk::Buffer Vulkan::DeviceLocalBuffer::GetBuffer() const { return _buffer; }
 
-vk::DeviceMemory Vulkan::PrimitiveBuffer::GetDeviceMemory() const { return _device_memory; }
+vk::DeviceMemory Vulkan::DeviceLocalBuffer::GetDeviceMemory() const { return _device_memory; }
