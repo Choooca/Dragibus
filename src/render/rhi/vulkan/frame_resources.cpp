@@ -2,13 +2,13 @@
 
 #include <render/primitives.h>
 #include <render/rhi/vulkan/resource_utils.h>
+#include <render/rhi/vulkan/context.h>
 #include <render/rhi/vulkan/renderer.h>
 
-Vulkan::FrameResources::FrameResources(Renderer* renderer)
-	: _renderer(renderer)
+Vulkan::FrameResources::FrameResources(const Context& context, const Renderer& renderer)
 {
-	vk::CommandBufferAllocateInfo alloc_info{ .commandPool = renderer->GetGraphicsCommandPool(), .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = FRAME_IN_FLIGHT };
-	_in_flight_command_buffer = vk::raii::CommandBuffers(_renderer->GetDevice(), alloc_info);
+	vk::CommandBufferAllocateInfo alloc_info{ .commandPool = context.GetGraphicsCommandPool(), .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = FRAME_IN_FLIGHT };
+	_in_flight_command_buffer = vk::raii::CommandBuffers(context.GetDevice(), alloc_info);
 
 	std::array<vk::DescriptorPoolSize, 1> descriptor_pool_sizes = {
 		{
@@ -23,16 +23,16 @@ Vulkan::FrameResources::FrameResources(Renderer* renderer)
 		.pPoolSizes = descriptor_pool_sizes.data()
 	};
 
-	_descriptor_pool = vk::raii::DescriptorPool(renderer->GetDevice(), descriptor_pool_info);
+	_descriptor_pool = vk::raii::DescriptorPool(context.GetDevice(), descriptor_pool_info);
 
-	std::vector<vk::DescriptorSetLayout> layouts(FRAME_IN_FLIGHT, renderer->GetObjDescriptorSetLayout());
+	std::vector<vk::DescriptorSetLayout> layouts(FRAME_IN_FLIGHT, renderer.GetObjDescriptorSetLayout());
 	vk::DescriptorSetAllocateInfo descriptor_set_alloc_info{
 		.descriptorPool = _descriptor_pool,
 		.descriptorSetCount = static_cast<uint32_t>(FRAME_IN_FLIGHT),
 		.pSetLayouts = layouts.data()
 	};
 
-	_descriptor_sets = renderer->GetDevice().allocateDescriptorSets(descriptor_set_alloc_info);
+	_descriptor_sets = context.GetDevice().allocateDescriptorSets(descriptor_set_alloc_info);
 
 	_uniform_buffers.reserve(FRAME_IN_FLIGHT);
 	_uniform_buffers_memory.reserve(FRAME_IN_FLIGHT);
@@ -43,7 +43,7 @@ Vulkan::FrameResources::FrameResources(Renderer* renderer)
 	for (uint32_t i = 0; i < FRAME_IN_FLIGHT; ++i) {
 
 		vk::DeviceSize size = sizeof(Render::UniformBufferObject);
-		auto [buffer, memory] = CreateBuffer(renderer, size, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		auto [buffer, memory] = CreateBuffer(context, size, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		_uniform_buffers.emplace_back(std::move(buffer));
 		_uniform_buffers_memory.emplace_back(std::move(memory));
 		_uniform_buffers_mapped.emplace_back(_uniform_buffers_memory[i].mapMemory(0, size));
@@ -63,10 +63,10 @@ Vulkan::FrameResources::FrameResources(Renderer* renderer)
 			}
 		};
 
-		renderer->GetDevice().updateDescriptorSets(descriptor_writes, {});
+		context.GetDevice().updateDescriptorSets(descriptor_writes, {});
 
-		_image_available_semaphore.emplace_back(renderer->GetDevice(), vk::SemaphoreCreateInfo());
-		_in_flight_fences.emplace_back(renderer->GetDevice(), vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled });
+		_image_available_semaphore.emplace_back(context.GetDevice(), vk::SemaphoreCreateInfo());
+		_in_flight_fences.emplace_back(context.GetDevice(), vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled });
 	}
 }
 

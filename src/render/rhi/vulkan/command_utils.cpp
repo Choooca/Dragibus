@@ -1,6 +1,6 @@
 #include "command_utils.h"
 #include <utils/debug_macro.h>
-#include <render/rhi/vulkan/renderer.h>
+#include <render/rhi/vulkan/context.h>
 
 void Vulkan::CommandUtils::TransitionImageLayout(
 	const vk::raii::CommandBuffer& command_buffer, vk::Image image,
@@ -73,13 +73,13 @@ void Vulkan::CommandUtils::TransitionImageLayout(const vk::raii::CommandBuffer& 
 	command_buffer.pipelineBarrier2(dependency_info);
 }
 
-vk::raii::CommandBuffer Vulkan::CommandUtils::BeginSingleCommandBuffer(const Renderer* renderer, vk::CommandPool command_pool) {
+vk::raii::CommandBuffer Vulkan::CommandUtils::BeginSingleCommandBuffer(const Context& context, vk::CommandPool command_pool) {
 	vk::CommandBufferAllocateInfo command_buffer_alloc_info{
 		.commandPool = command_pool,
 		.level = vk::CommandBufferLevel::ePrimary,
 		.commandBufferCount = 1
 	};
-	vk::raii::CommandBuffer command_buffer = std::move(vk::raii::CommandBuffers(renderer->GetDevice(), command_buffer_alloc_info).front());
+	vk::raii::CommandBuffer command_buffer = std::move(vk::raii::CommandBuffers(context.GetDevice(), command_buffer_alloc_info).front());
 
 	vk::CommandBufferBeginInfo begin_info{
 		.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit

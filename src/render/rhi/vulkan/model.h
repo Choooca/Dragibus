@@ -6,6 +6,7 @@
 
 #include <vulkan/vulkan_raii.hpp>
 #include <render/rhi/vulkan/resource_utils.h>
+#include <render/primitives.h>
 
 namespace Render {
 	struct Model;
@@ -15,6 +16,7 @@ namespace Vulkan {
 
 	class PrimitiveBuffer;
 	class Renderer;
+	class Context;
 
 	struct Image {
 		std::string name;
@@ -62,7 +64,7 @@ namespace Vulkan {
 
 	public:
 
-		Model(const Renderer* renderer, const Render::Model& model);
+		Model(const Vulkan::Context &context, const Vulkan::Renderer &renderer, const Render::Model& model);
 
 		const std::vector<Mesh>& GetMeshes() const;
 		const std::vector<Material>& GetMaterials() const;
@@ -77,7 +79,7 @@ namespace Vulkan {
 		vk::DescriptorImageInfo CreateImageInfo(const Render::Model& model, int texture_index, vk::ImageView fallback) const;
 
 		Vulkan::Material CreateMaterial(
-			const Renderer* renderer, const Render::Model& model, std::string material_name, int material_index,
+			const Context &context, const Render::Model& model, std::string material_name, int material_index,
 			int base_color_tex_idx, int emmisive_tex_idx, int normal_tex_idx,
 			int occlusion_tex_idx, int metallic_roughness_tex_idx,
 			glm::vec4 base_color, glm::vec3 emissive, float metallic_factor, float roughness_factor);

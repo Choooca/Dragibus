@@ -6,6 +6,7 @@
 class Window;
 
 namespace Vulkan {
+	class Context;
 	class Renderer;
 }
 
@@ -20,6 +21,7 @@ public:
 private:
 
 	std::unique_ptr<Window> _window;
+	std::unique_ptr<Vulkan::Context> _context;
 	std::unique_ptr<Vulkan::Renderer> _renderer;
 	std::unique_ptr<class Scene> _scene;
 	std::unique_ptr<class InputManager> _input_manager;

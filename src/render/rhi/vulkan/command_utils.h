@@ -3,7 +3,7 @@
 #include <vulkan/vulkan_raii.hpp>
 
 namespace Vulkan {
-	class Renderer;
+	class Context;
 }
 
 namespace Vulkan::CommandUtils {
@@ -19,7 +19,7 @@ namespace Vulkan::CommandUtils {
 		const vk::raii::CommandBuffer& command_buffer, vk::Image image,
 		vk::ImageLayout old_layout, vk::ImageLayout new_layout);
 
-	vk::raii::CommandBuffer BeginSingleCommandBuffer(const Renderer* renderer, vk::CommandPool command_pool);
+	vk::raii::CommandBuffer BeginSingleCommandBuffer(const Context &context, vk::CommandPool command_pool);
 	void EndSingleCommandBuffer(vk::Queue queue, vk::raii::CommandBuffer&& command_buffer);
 
 };

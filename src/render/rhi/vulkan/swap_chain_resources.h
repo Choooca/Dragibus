@@ -4,14 +4,14 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
-namespace Vulkan {
+#include <render/rhi/vulkan/context.h>
 
-	class Renderer;
+namespace Vulkan {
 
 	class SwapChainResources {
 
 	public:
-		SwapChainResources(Renderer* renderer);
+		SwapChainResources(const Vulkan::Context &context);
 		~SwapChainResources();
 
 		int GetSwapChainImageCount();
@@ -29,7 +29,7 @@ namespace Vulkan {
 
 	private:
 
-		Renderer* _renderer;
+		const Vulkan::Context &_context;
 
 		vk::PresentModeKHR _present_mode;
 		vk::Extent2D _extent;

@@ -7,12 +7,13 @@
 namespace Vulkan {
 
 	class Renderer;
+	class Context;
 
 	class FrameResources {
 
 	public:
 
-		FrameResources(Renderer *renderer);
+		FrameResources(const Context &context, const Renderer &renderer);
 		~FrameResources();
 
 		static constexpr uint32_t FRAME_IN_FLIGHT = 3;
@@ -25,9 +26,6 @@ namespace Vulkan {
 		vk::DescriptorSet GetDescriptorSet(int frame) const;
 
 	private:
-
-
-		Renderer* _renderer;
 
 		std::vector<vk::raii::CommandBuffer> _in_flight_command_buffer;
 		std::vector<vk::raii::Fence> _in_flight_fences;

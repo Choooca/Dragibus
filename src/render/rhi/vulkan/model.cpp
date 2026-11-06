@@ -1,8 +1,9 @@
 #include "model.h"
+#include <render/rhi/vulkan/context.h>
 #include <render/rhi/vulkan/renderer.h>
 #include <utils/build_macro.h>
 
-Vulkan::Model::Model(const Renderer* renderer, const Render::Model& model)
+Vulkan::Model::Model(const Vulkan::Context& context, const Vulkan::Renderer& renderer, const Render::Model& model)
 {
 	uint32_t material_count = model.materials.size() + 1;
 
@@ -20,20 +21,20 @@ Vulkan::Model::Model(const Renderer* renderer, const Render::Model& model)
 		.pPoolSizes = pool_sizes.data()
 	};
 
-	_descriptor_pool = vk::raii::DescriptorPool(renderer->GetDevice(), descriptor_pool_info);
+	_descriptor_pool = vk::raii::DescriptorPool(context.GetDevice(), descriptor_pool_info);
 
-	std::vector<vk::DescriptorSetLayout> layouts(material_count, renderer->GetMatDescriptorSetLayout());
+	std::vector<vk::DescriptorSetLayout> layouts(material_count, renderer.GetMatDescriptorSetLayout());
 	vk::DescriptorSetAllocateInfo alloc_info{
 		.descriptorPool = _descriptor_pool,
 		.descriptorSetCount = static_cast<uint32_t>(material_count),
 		.pSetLayouts = layouts.data()
 	};
 
-	_descriptor_sets = renderer->GetDevice().allocateDescriptorSets(alloc_info);
+	_descriptor_sets = context.GetDevice().allocateDescriptorSets(alloc_info);
 
 	{
-		auto [image_default_white, default_white_memory] = CreateTexture(renderer, "default_white.png", vk::Format::eR8G8B8A8Srgb);
-		auto default_white_view = CreateImageView(renderer, image_default_white, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
+		auto [image_default_white, default_white_memory] = CreateTexture(context, "default_white.png", vk::Format::eR8G8B8A8Srgb);
+		auto default_white_view = CreateImageView(context, image_default_white, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
 
 		_default_white = {
 			"Default White",
@@ -42,8 +43,8 @@ Vulkan::Model::Model(const Renderer* renderer, const Render::Model& model)
 			std::move(default_white_view)
 		};
 
-		auto [gpu_image_normal, default_normal_memory] = CreateTexture(renderer, "default_normal.png", vk::Format::eR8G8B8A8Unorm);
-		auto default_normal_view = CreateImageView(renderer, gpu_image_normal, vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor);
+		auto [gpu_image_normal, default_normal_memory] = CreateTexture(context, "default_normal.png", vk::Format::eR8G8B8A8Unorm);
+		auto default_normal_view = CreateImageView(context, gpu_image_normal, vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor);
 
 		_default_normal = {
 			"Default Normal",
@@ -53,7 +54,7 @@ Vulkan::Model::Model(const Renderer* renderer, const Render::Model& model)
 		};
 	}
 
-	_default_sampler = CreateSampler(renderer);
+	_default_sampler = CreateSampler(context);
 
 	_meshes.reserve(model.meshes.size());
 
@@ -66,8 +67,8 @@ Vulkan::Model::Model(const Renderer* renderer, const Render::Model& model)
 		for (const auto& primitive : mesh.primitives) {
 
 			gpu_mesh.primitives.push_back({
-					CreatePrimitiveBuffer(renderer, primitive.vertices, vk::BufferUsageFlagBits::eVertexBuffer),
-					CreatePrimitiveBuffer(renderer, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer),
+					CreatePrimitiveBuffer(context, primitive.vertices, vk::BufferUsageFlagBits::eVertexBuffer),
+					CreatePrimitiveBuffer(context, primitive.indices, vk::BufferUsageFlagBits::eIndexBuffer),
 					static_cast<uint32_t>(primitive.indices.size()),
 					primitive.material_index
 				});
@@ -96,8 +97,8 @@ Vulkan::Model::Model(const Renderer* renderer, const Render::Model& model)
 
 		vk::Format format = is_srgb[i] ? vk::Format::eR8G8B8A8Srgb : vk::Format::eR8G8B8A8Unorm;
 
-		auto [gpu_image, memory] = CreateTexture(renderer, image.pixels, image.width, image.height, image.channels, format);
-		auto view = CreateImageView(renderer, gpu_image, format, vk::ImageAspectFlagBits::eColor);
+		auto [gpu_image, memory] = CreateTexture(context, image.pixels, image.width, image.height, image.channels, format);
+		auto view = CreateImageView(context, gpu_image, format, vk::ImageAspectFlagBits::eColor);
 
 		_images.emplace_back(
 			image.name,
@@ -112,7 +113,7 @@ Vulkan::Model::Model(const Renderer* renderer, const Render::Model& model)
 	for (const auto& sampler : model.samplers) {
 
 		//TODO create good sampler
-		_samplers.emplace_back(CreateSampler(renderer));
+		_samplers.emplace_back(CreateSampler(context));
 	}
 
 	_materials.reserve(material_count);
@@ -123,14 +124,14 @@ Vulkan::Model::Model(const Renderer* renderer, const Render::Model& model)
 
 		_materials.emplace_back(
 			CreateMaterial(
-				renderer, model, material.name, i,
+				context, model, material.name, i,
 				material.base_color_texture_index, material.emmisive_texture_index, material.normal_texture_index, material.occlusion_texture_index,
 				material.metallic_roughness_texture_index, material.base_color, material.emissive, material.metallic_factor, material.roughness_factor)
 		);
 	}
 
 	_materials.emplace_back(
-		CreateMaterial(renderer, model, "Default Material",
+		CreateMaterial(context, model, "Default Material",
 			model.materials.size(), -1, -1, -1, -1, -1, glm::vec4(1), glm::vec3(0), 0, 1)
 	);
 }
@@ -156,7 +157,7 @@ vk::DescriptorImageInfo Vulkan::Model::CreateImageInfo(const Render::Model& mode
 }
 
 Vulkan::Material Vulkan::Model::CreateMaterial(
-	const Renderer* renderer, const Render::Model& model, std::string material_name, int material_index,
+	const Context& context, const Render::Model& model, std::string material_name, int material_index,
 	int base_color_tex_idx, int emmisive_tex_idx, int normal_tex_idx, int occlusion_tex_idx, int metallic_roughness_tex_idx,
 	glm::vec4 base_color, glm::vec3 emissive, float metallic_factor, float roughness_factor)
 {
@@ -178,7 +179,7 @@ Vulkan::Material Vulkan::Model::CreateMaterial(
 		.roughness_factor = roughness_factor
 	};
 
-	PrimitiveBuffer uniform_buffer = CreatePrimitiveBuffer<Material::Uniform>(renderer, uniform_data, vk::BufferUsageFlagBits::eUniformBuffer);
+	PrimitiveBuffer uniform_buffer = CreatePrimitiveBuffer<Material::Uniform>(context, uniform_data, vk::BufferUsageFlagBits::eUniformBuffer);
 
 	vk::DescriptorBufferInfo descriptor_buffer_info = {
 		.buffer = uniform_buffer.GetBuffer(),
@@ -208,7 +209,7 @@ Vulkan::Material Vulkan::Model::CreateMaterial(
 		}
 	};
 
-	renderer->GetDevice().updateDescriptorSets(descriptor_write, {});
+	context.GetDevice().updateDescriptorSets(descriptor_write, {});
 
 	return {
 		material_name,
