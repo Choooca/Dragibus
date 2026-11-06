@@ -1,62 +1,18 @@
 cmake_minimum_required(VERSION 4.1.2)
 
-include(FetchContent)
-
-function(IncludeDependency lib_name git_url git_version sub_source_dir)
-	message(STATUS "include ${lib_name}")
-
-	FetchContent_Declare(
-		${lib_name}
-		GIT_REPOSITORY ${git_url}
-		GIT_TAG ${git_version}
-		GIT_SHALLOW TRUE
-		GIT_PROGRESS TRUE
-		SOURCE_SUBDIR ${sub_source_dir}
-	)
-
-	FetchContent_MakeAvailable(${lib_name})
-
-	# FetchContent sets these in this function's scope only; re-export them
-	# so callers can use ${<lib_name>_SOURCE_DIR} after calling IncludeDependency().
-	set(${lib_name}_SOURCE_DIR ${${lib_name}_SOURCE_DIR} PARENT_SCOPE)
-	set(${lib_name}_BINARY_DIR ${${lib_name}_BINARY_DIR} PARENT_SCOPE)
-endfunction()
-
-set(VULKAN_MAJOR_VERSION 1)
-set(VULKAN_MINOR_VERSION 4)
-set(VULKAN_PATCH_VERSION 341)
-set(VULKAN_VERSION ${VULKAN_MAJOR_VERSION}.${VULKAN_MINOR_VERSION}.${VULKAN_PATCH_VERSION})
-
-IncludeDependency(glfw https://github.com/glfw/glfw.git 3.4 "")
-IncludeDependency(vulkanheaders https://github.com/KhronosGroup/Vulkan-Headers.git v${VULKAN_VERSION} "")
-IncludeDependency(vulkanhpp https://github.com/KhronosGroup/Vulkan-Hpp.git v${VULKAN_VERSION} "")
-IncludeDependency(glm https://github.com/g-truc/glm.git 1.0.3 "")
-IncludeDependency(spdlog https://github.com/gabime/spdlog.git v1.17.0 "")
-
-set(TINYGLTF3_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(TINYGLTF3_INSTALL OFF CACHE BOOL "" FORCE)
-IncludeDependency(tinygltf https://github.com/syoyo/tinygltf.git release "")
-
-#I don't include stb with IncludeDependency because outside the function the first parameter doesn't seem to be a target.
-message(STATUS "include stb_image")
-FetchContent_Declare(
-	stb
-	GIT_REPOSITORY https://github.com/nothings/stb.git
-	GIT_TAG master
-	GIT_SHALLOW TRUE
-	GIT_PROGRESS TRUE
-)
-FetchContent_MakeAvailable(stb)
-add_library(stb INTERFACE)
-target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
+find_package(Vulkan REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(mikktspace CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+find_package(Stb REQUIRED)
+find_path(TINYGLTF_INCLUDE_DIR tiny_gltf_v3.h REQUIRED)
 
 add_library(deps INTERFACE)
-target_include_directories(deps INTERFACE ${vulkanhpp_SOURCE_DIR})
-target_include_directories(deps INTERFACE ${stb_SOURCE_DIR})
-target_include_directories(deps INTERFACE ${tinygltf_SOURCE_DIR})
+target_include_directories(deps INTERFACE ${Stb_INCLUDE_DIR})
+target_include_directories(deps INTERFACE ${TINYGLTF_INCLUDE_DIR})
 
 target_compile_definitions(deps INTERFACE VULKAN_HPP_NO_STRUCT_CONSTRUCTORS)
 target_compile_definitions(deps INTERFACE VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS)
 
-find_package(Vulkan REQUIRED)
-target_link_libraries(deps INTERFACE stb Vulkan::Headers Vulkan::Vulkan glfw glm::glm spdlog::spdlog)
+target_link_libraries(deps INTERFACE Vulkan::Vulkan glfw glm::glm spdlog::spdlog mikktspace::mikktspace)

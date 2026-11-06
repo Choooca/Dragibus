@@ -1,0 +1,11 @@
+{
+  "dependencies": [
+    "glfw3",
+    "glm",
+    "mikktspace",
+    "spdlog",
+    "stb",
+    "vulkan",
+    "tinygltf"
+  ]
+}
