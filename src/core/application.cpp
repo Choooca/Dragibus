@@ -33,7 +33,11 @@ void Application::Loop()
 	while (!glfwWindowShouldClose(_window->GetGLFWWindow())) {
 		glfwPollEvents();
 		_input_manager->Update();
-		_camera->Update();
+		_window->Update(*_input_manager);
+
+		if (_window->IsCursorCaptured())
+			_camera->Update();
+
 		_renderer->Loop(_camera.get());
 	}
 

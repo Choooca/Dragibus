@@ -19,7 +19,8 @@ public:
 	double GetCursorXDelta();
 	double GetCursorYDelta();
 
-	bool IsKeyPress(int keyId);
+	bool IsKeyPress(int keyId) const;
+	bool IsMouseButtonPress(int mouseId) const;
 
 private:
 

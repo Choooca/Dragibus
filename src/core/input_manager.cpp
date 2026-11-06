@@ -8,7 +8,6 @@ InputManager::InputManager(GLFWwindow* window) : _window(window)
 	_keys.fill(false);
 	glfwGetTime();
 	_last_time = glfwGetTime();
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 void InputManager::Update()
@@ -41,7 +40,7 @@ void InputManager::Update()
 	}
 }
 
-bool InputManager::IsKeyPress(int keyId)
+bool InputManager::IsKeyPress(int keyId) const
 {
 	if (keyId < GLFW_KEY_SPACE || keyId >= GLFW_KEY_LAST) {
 		spdlog::error("Input with id : {} doesn't exist.", keyId);
@@ -49,6 +48,15 @@ bool InputManager::IsKeyPress(int keyId)
 	}
 
 	return _keys[keyId - GLFW_KEY_SPACE];
+}
+
+bool InputManager::IsMouseButtonPress(int mouseId) const
+{
+	if (mouseId < GLFW_MOUSE_BUTTON_1 || mouseId > GLFW_MOUSE_BUTTON_LAST) {
+		spdlog::error("Mouse Button id : {} doesn't exist.", mouseId);
+		return false;
+	}
+	return glfwGetMouseButton(_window, mouseId) == GLFW_PRESS;
 }
 
 double InputManager::GetCursorXDelta() {
