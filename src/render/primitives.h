@@ -9,10 +9,13 @@
 
 namespace Render {
 
-	struct UniformBufferObject {
-		alignas(16) glm::mat4 model;
+	struct GlobalTransformation {
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 perspective;
+	};
+
+	struct NodeTransformation {
+		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 normal;
 	};
 
@@ -126,16 +129,37 @@ namespace Render {
 		std::vector<Primitive> primitives;
 	};
 
+	struct Node {
+		std::string name;
+
+		std::vector<int32_t> children;
+
+		int32_t mesh = -1;
+
+		double translation[3];
+		double rotation[4];
+		double scale[3];
+		double matrix[16];
+		int32_t has_matrix = false;
+	};
+
+	struct Scene {
+		std::string name;
+		std::vector<int32_t> nodes;
+	};
+
 	struct Model {
 		std::string name;
 		
+		int32_t default_scene = -1;
+
+		std::vector<Node> nodes;
 		std::vector<Mesh> meshes;
 		std::vector<Material> materials;
 		std::vector<Texture> textures;
 		std::vector<Sampler> samplers;
 		std::vector<Image> images;
-
-
+		std::vector<Render::Scene> scenes;
 	};
 
 #pragma endregion

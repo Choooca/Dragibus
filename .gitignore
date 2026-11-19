@@ -77,3 +77,4 @@ Testing/
 #Resources
 resources/models
 resources/textures
+*.spv

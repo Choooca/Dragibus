@@ -20,7 +20,7 @@ private:
 	InputManager* _input_manager;
 
 	glm::vec3 _position = glm::vec3(0);
-	float _speed = 30.0f;
+	float _speed = 5.0f;
 	float _sensitivity = 1.0f;
 
 	glm::vec3 _fwd = glm::vec3(1, 0, 0);

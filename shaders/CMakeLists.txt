@@ -10,7 +10,7 @@ set(SHADER_SPIRV_OUTPUTS)
 foreach(shader_source ${SHADER_SLANG_SOURCES})
 	get_filename_component(shader_name ${shader_source} NAME_WE)
 	set(shader_input  ${CMAKE_CURRENT_SOURCE_DIR}/${shader_source})
-	set(shader_output ${CMAKE_CURRENT_SOURCE_DIR}/${shader_name}.spv)
+	set(shader_output ${CMAKE_CURRENT_BINARY_DIR}/${shader_name}.spv)
 
 	add_custom_command(
 		OUTPUT ${shader_output}

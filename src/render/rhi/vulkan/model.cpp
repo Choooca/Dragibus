@@ -1,7 +1,10 @@
 #include "model.h"
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <render/rhi/vulkan/context.h>
 #include <render/rhi/vulkan/renderer.h>
 #include <utils/build_macro.h>
+#include <utils/debug_macro.h>
 
 Vulkan::Model::Model(const Vulkan::Context& context, const Vulkan::Renderer& renderer, const Render::Model& model)
 {
@@ -55,6 +58,48 @@ Vulkan::Model::Model(const Vulkan::Context& context, const Vulkan::Renderer& ren
 	}
 
 	_default_sampler = CreateSampler(context);
+
+	_default_scene = model.default_scene;
+
+	_scenes.reserve(model.scenes.size());
+
+	for (const auto& scene : model.scenes) {
+		Scene gpu_scene = {};
+
+		gpu_scene.name = scene.name;
+		gpu_scene.nodes.assign(scene.nodes.data(), scene.nodes.data() + scene.nodes.size());
+
+		_scenes.push_back(gpu_scene);
+	}
+
+	_nodes.reserve(model.nodes.size());
+
+	for (const auto& node : model.nodes) {
+		Node gpu_node = {};
+
+		gpu_node.name = node.name;
+		gpu_node.mesh = node.mesh;
+		gpu_node.children.assign(node.children.data(), node.children.data() + node.children.size());
+
+		if (node.has_matrix) {
+			gpu_node.model_matrix = glm::make_mat4(node.matrix);
+		}
+		else {
+			glm::mat4 model_matrix(1.0f);
+
+			glm::vec3 translation = glm::make_vec3(node.translation);
+			glm::quat rotation = glm::make_quat(node.rotation);
+			glm::vec3 scale = glm::make_vec3(node.scale);
+			
+			model_matrix = glm::translate(model_matrix, translation);
+			model_matrix *= glm::mat4_cast(rotation);
+			model_matrix = glm::scale(model_matrix, scale);
+
+			gpu_node.model_matrix = model_matrix;
+		}
+
+		_nodes.emplace_back(std::move(gpu_node));
+	}
 
 	_meshes.reserve(model.meshes.size());
 
@@ -136,9 +181,35 @@ Vulkan::Model::Model(const Vulkan::Context& context, const Vulkan::Renderer& ren
 	);
 }
 
+const Vulkan::Scene& Vulkan::Model::GetDefaultScene() const { 
+	
+	if (_default_scene == -1) {
+		if(_scenes.size() <= 0)
+			return empty_scene;
+		return _scenes[0];
+	}
+
+	if (static_cast<size_t>(_default_scene) >= _scenes.size())
+		THROW_RUNTIME_ERROR("Default scene index is out of range");
+
+	return _scenes[_default_scene]; 
+}
+
 const std::vector<Vulkan::Mesh>& Vulkan::Model::GetMeshes() const { return _meshes; }
 
+const Vulkan::Mesh& Vulkan::Model::GetMesh(int index) const { 
+	if (index < 0 || static_cast<size_t>(index) >= _meshes.size())
+		THROW_RUNTIME_ERROR("Get Mesh index out of range");
+	return _meshes[index]; 
+}
+
 const std::vector<Vulkan::Material>& Vulkan::Model::GetMaterials() const { return _materials; }
+
+const Vulkan::Node& Vulkan::Model::GetNode(int index) const { 
+	if (index < 0 || static_cast<size_t>(index) >= _nodes.size())
+		THROW_RUNTIME_ERROR("Get Node index out of range");
+	return _nodes[index]; 
+}
 
 vk::DescriptorImageInfo Vulkan::Model::CreateImageInfo(const Render::Model& model, int texture_index, vk::ImageView view_fallback) const
 {

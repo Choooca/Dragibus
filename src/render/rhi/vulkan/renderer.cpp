@@ -159,7 +159,20 @@
 		.depthBoundsTestEnable = vk::False,
 		.stencilTestEnable = vk::False 
 	};
-	vk::PipelineLayoutCreateInfo pipeline_layout_info{ .setLayoutCount = static_cast<uint32_t>(descriptor_set_layout.size()), .pSetLayouts = descriptor_set_layout.data(), .pushConstantRangeCount = 0};
+	vk::PushConstantRange node_push_constant_range = {
+		.stageFlags = vk::ShaderStageFlagBits::eVertex,
+		.offset = 0,
+		.size = sizeof(Render::NodeTransformation)
+	};
+	std::array<vk::PushConstantRange, 1> push_constant_ranges = {
+		node_push_constant_range
+	};
+	vk::PipelineLayoutCreateInfo pipeline_layout_info{ 
+		.setLayoutCount = static_cast<uint32_t>(descriptor_set_layout.size()),
+		.pSetLayouts = descriptor_set_layout.data(),
+		.pushConstantRangeCount = push_constant_ranges.size(),
+		.pPushConstantRanges = push_constant_ranges.data() 
+	};
 	_pipeline_layout = vk::raii::PipelineLayout(_context.GetDevice(), pipeline_layout_info);
 
 	vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipeline_info_chain = {
@@ -219,18 +232,11 @@ void Vulkan::Renderer::FramebufferResizedCallback(GLFWwindow* window, int width,
 
 void Vulkan::Renderer::UpdateUniformBuffer(uint32_t current_frame, Camera* camera)
 {
-	static std::chrono::steady_clock::time_point start = std::chrono::high_resolution_clock::now();
-	std::chrono::steady_clock::time_point now = std::chrono::high_resolution_clock::now();
+	Render::GlobalTransformation global_transform{};
+	global_transform.view = glm::lookAt(camera->GetPosition(), camera->GetPosition() + camera->GetForward(), glm::vec3(0, 1, 0));
+	global_transform.perspective = glm::perspective(glm::radians(45.0f), _swap_chain_ressources->GetSwapChainExtent().width / (float)_swap_chain_ressources->GetSwapChainExtent().height, 0.001f, 1000.0f);
 
-	float delta_time = std::chrono::duration<float, std::chrono::seconds::period>(now - start).count();
-
-	Render::UniformBufferObject ubo{};
-	ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
-	ubo.view = glm::lookAt(camera->GetPosition(), camera->GetPosition() + camera->GetForward(), glm::vec3(0, 1, 0));
-	ubo.perspective = glm::perspective(glm::radians(45.0f), _swap_chain_ressources->GetSwapChainExtent().width / (float)_swap_chain_ressources->GetSwapChainExtent().height, 0.001f, 1000.0f);
-	ubo.normal = glm::transpose(glm::inverse(ubo.model));
-
-	memcpy(_frame_resources->GetUniformBufferMappedMemory(current_frame), &ubo, sizeof(Render::UniformBufferObject));
+	memcpy(_frame_resources->GetUniformBufferMappedMemory(current_frame), &global_transform, sizeof(Render::GlobalTransformation));
 }
 
 void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap_chain_image_index)
@@ -296,17 +302,7 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 1, obj_descriptor_set, nullptr);
 
 	for (const Vulkan::Model& model : _models) {
-		for (const Vulkan::Mesh& mesh : model.GetMeshes()) {
-			for (const Vulkan::Primitive& primitive : mesh.primitives) {
-
-				const Vulkan::Material &mat = primitive.GetMaterialIndex() != -1 ? model.GetMaterials()[primitive.GetMaterialIndex()] : model.GetMaterials().back();
-				command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 2, mat.descriptor_sets, nullptr);
-				vk::DeviceSize offset = { 0 };
-				command_buffer.bindVertexBuffers(0, primitive.GetVertexBuffer().GetBuffer(), offset);
-				command_buffer.bindIndexBuffer(primitive.GetIndexBuffer().GetBuffer(), 0, vk::IndexType::eUint32);
-				command_buffer.drawIndexed(primitive.GetIndexCount(), 1, 0, 0, 0);
-			}
-		}
+		RenderModel(command_buffer, model);
 	}
 
 	command_buffer.endRendering();
@@ -319,6 +315,58 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 		, vk::ImageAspectFlagBits::eColor);
 
 	command_buffer.end();
+}
+
+void Vulkan::Renderer::RenderModel(vk::raii::CommandBuffer& command_buffer, const Vulkan::Model& model)
+{
+	RenderScene(command_buffer, model, model.GetDefaultScene());
+}
+
+void Vulkan::Renderer::RenderScene(vk::raii::CommandBuffer& command_buffer, const Vulkan::Model& model, const Vulkan::Scene& scene)
+{
+	for (const auto& node : scene.nodes) {
+		RenderNode(command_buffer, model, model.GetNode(node), glm::mat4(1));
+	}
+}
+
+void Vulkan::Renderer::RenderNode(vk::raii::CommandBuffer& command_buffer, const Vulkan::Model& model, const Vulkan::Node& node, const glm::mat4 &parent_model_mat)
+{
+	glm::mat4 model_matrix = parent_model_mat * node.model_matrix;
+
+	if (node.mesh != -1) {
+
+		Render::NodeTransformation node_transform = {
+			.model = model_matrix,
+			.normal = glm::transpose(glm::inverse(model_matrix))
+		};
+
+		command_buffer.pushConstants(
+			_pipeline_layout,
+			vk::ShaderStageFlagBits::eVertex,
+			0,
+			sizeof(Render::NodeTransformation),
+			&node_transform
+		);
+
+		RenderMesh(command_buffer, model, model.GetMesh(node.mesh));
+	}
+
+	for (const auto& child : node.children) {
+		RenderNode(command_buffer, model, model.GetNode(child), model_matrix);
+	}
+}
+
+void Vulkan::Renderer::RenderMesh(vk::raii::CommandBuffer& command_buffer, const Vulkan::Model& model, const Vulkan::Mesh& mesh)
+{
+	for (const auto& primitive : mesh.primitives) {
+		const Vulkan::Material& mat = primitive.GetMaterialIndex() != -1 ? model.GetMaterials()[primitive.GetMaterialIndex()] : model.GetMaterials().back();
+		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 2, mat.descriptor_sets, nullptr);
+
+		vk::DeviceSize offset = { 0 };
+		command_buffer.bindVertexBuffers(0, primitive.GetVertexBuffer().GetBuffer(), offset);
+		command_buffer.bindIndexBuffer(primitive.GetIndexBuffer().GetBuffer(), 0, vk::IndexType::eUint32);
+		command_buffer.drawIndexed(primitive.GetIndexCount(), 1, 0, 0, 0);
+	}
 }
 
 vk::raii::DescriptorSetLayout Vulkan::Renderer::CreateDescriptorSetLayout(const std::vector<vk::DescriptorSetLayoutBinding>& bidings)
@@ -350,10 +398,10 @@ void Vulkan::Renderer::Loop(Camera* camera)
 
 	_context.GetDevice().resetFences(in_flight_fence);
 
+	UpdateUniformBuffer(_current_frame, camera);
+
 	vk::CommandBuffer command_buffer = _frame_resources->GetCommandBuffer(_current_frame);
 	RecordCommandBuffer(_current_frame, swap_chain_image_index);
-
-	UpdateUniformBuffer(_current_frame, camera);
 
 	vk::Semaphore wait_semaphore[] = { _frame_resources->GetImageAvailableSemaphore(_current_frame) };
 	vk::PipelineStageFlags wait_stages = { vk::PipelineStageFlagBits::eColorAttachmentOutput };

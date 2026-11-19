@@ -7,12 +7,14 @@
 #include <tiny_gltf_v3.h>
 
 namespace Render {
+	struct Node;
 	struct Primitive;
 	struct Mesh;
 	struct Material;
 	struct Texture;
 	struct Sampler;
 	struct Image;
+	struct Scene;
 	struct Model;
 }
 
@@ -20,6 +22,8 @@ namespace Render::GLTF {
 	
 	Render::Model ParseGLTFModel(const std::string& model_name);
 
+	Render::Scene ParseScene(const tg3_scene &scene);
+	Node ParseNode(const tg3_node& node);
 	Mesh ParseMesh(const tg3_mesh& mesh, const tg3_model &model);
 	Material ParseMaterial(const tg3_material& material);
 	Texture ParseTexture(const tg3_texture& texture);

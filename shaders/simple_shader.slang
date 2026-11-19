@@ -10,10 +10,13 @@ struct DirectionalLight {
     float4 color;
 };
 
-struct UniformBuffer {
-    float4x4 model;
+struct GlobalTransformation {
     float4x4 view;
     float4x4 proj;
+};
+
+struct NodeTransformation {
+    float4x4 model;
     float4x4 normal;
 };
 
@@ -33,11 +36,14 @@ static const int MATERIAL_TEXTURE_COUNT = 5;
 
 static const float ambient = 0.2;
 
+[[vk::push_constant]]
+NodeTransformation node_transform;
+
 [[vk::binding(0, 0)]]
 ConstantBuffer<DirectionalLight> directional_light;
 
 [[vk::binding(0, 1)]]
-ConstantBuffer<UniformBuffer> ubo;
+ConstantBuffer<GlobalTransformation> global_transform;
 
 struct VertexOutput {
     float4 position : SV_Position;
@@ -54,9 +60,9 @@ ConstantBuffer<MaterialUniform> material_ubo;
 [shader("vertex")]
 VertexOutput VertMain(VSInput input) {
     VertexOutput output;
-    output.position = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.position, 1.0))));
+    output.position = mul(global_transform.proj, mul(global_transform.view, mul(node_transform.model, float4(input.position, 1.0))));
     output.texcoord_0 = input.tex_coord0;
-    output.normal = mul(float3x3(ubo.normal), input.normal);
+    output.normal = mul(float3x3(node_transform.normal), input.normal);
     return output;
 }
 

@@ -46,6 +46,18 @@ Render::Model Render::GLTF::ParseGLTFModel(const std::string& model_name)
 
 	Render::Model ret = {};
 
+	ret.default_scene = model.default_scene;
+
+	ret.scenes.resize(model.scenes_count);
+	for (uint32_t i = 0; i < model.scenes_count; ++i) {
+		ret.scenes[i] = ParseScene(model.scenes[i]);
+	}
+
+	ret.nodes.resize(model.nodes_count);
+	for (uint32_t i = 0; i < model.nodes_count; ++i) {
+		ret.nodes[i] = ParseNode(model.nodes[i]);
+ 	}
+
 	ret.meshes.resize(model.meshes_count);
 	for (uint32_t i = 0; i < model.meshes_count; ++i) {
 		ret.meshes[i] = ParseMesh(model.meshes[i], model);
@@ -74,6 +86,34 @@ Render::Model Render::GLTF::ParseGLTFModel(const std::string& model_name)
 	return ret;
 }
 
+
+Render::Scene Render::GLTF::ParseScene(const tg3_scene& scene) {
+	Render::Scene out{};
+
+	out.name.assign(scene.name.data, scene.name.len);
+	out.nodes.assign(scene.nodes, scene.nodes + scene.nodes_count);
+
+	return out;
+}
+
+Render::Node Render::GLTF::ParseNode(const tg3_node& node)
+{
+	Node out{};
+
+	out.name.assign(node.name.data, node.name.len);
+
+	out.mesh = node.mesh;
+
+	out.has_matrix = node.has_matrix;
+	std::copy(std::begin(node.matrix), std::end(node.matrix), out.matrix);
+	std::copy(std::begin(node.translation), std::end(node.translation), out.translation);
+	std::copy(std::begin(node.rotation), std::end(node.rotation), out.rotation);
+	std::copy(std::begin(node.scale), std::end(node.scale), out.scale);
+
+	out.children.assign(node.children, node.children + node.children_count);
+
+	return out;
+}
 
 Render::Mesh Render::GLTF::ParseMesh(const tg3_mesh& mesh, const tg3_model& model)
 {

@@ -20,6 +20,9 @@ namespace Vulkan {
 	class FrameResources;
 	class SwapChainResources;
 	class Model;
+	struct Node;
+	struct Mesh;
+	struct Scene;
 
 	struct DirectionalLight {
 		alignas(16) glm::vec3 direction;
@@ -68,6 +71,11 @@ namespace Vulkan {
 
 		void UpdateUniformBuffer(uint32_t current_frame, Camera *renderer);
 		void RecordCommandBuffer(uint32_t current_frame, uint32_t image_index);
+
+		void RenderModel(vk::raii::CommandBuffer &command_buffer, const Vulkan::Model &model);
+		void RenderScene(vk::raii::CommandBuffer& command_buffer, const Vulkan::Model& model, const Vulkan::Scene& scene);
+		void RenderNode(vk::raii::CommandBuffer &command_buffer, const Vulkan::Model &model, const Vulkan::Node &node, const glm::mat4& parent_model_mat);
+		void RenderMesh(vk::raii::CommandBuffer& command_buffer, const Vulkan::Model& model, const Vulkan::Mesh& mesh);
 
 		vk::raii::DescriptorSetLayout CreateDescriptorSetLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bidings);
 	};

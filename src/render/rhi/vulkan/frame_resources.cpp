@@ -42,13 +42,13 @@ Vulkan::FrameResources::FrameResources(const Context& context, const Renderer& r
 
 	for (uint32_t i = 0; i < FRAME_IN_FLIGHT; ++i) {
 
-		vk::DeviceSize size = sizeof(Render::UniformBufferObject);
+		vk::DeviceSize size = sizeof(Render::GlobalTransformation);
 		auto [buffer, memory] = CreateBuffer(context, size, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		_uniform_buffers.emplace_back(std::move(buffer));
 		_uniform_buffers_memory.emplace_back(std::move(memory));
 		_uniform_buffers_mapped.emplace_back(_uniform_buffers_memory[i].mapMemory(0, size));
 
-		vk::DescriptorBufferInfo buffer_info = { .buffer = _uniform_buffers[i], .offset = 0, .range = sizeof(Render::UniformBufferObject) };
+		vk::DescriptorBufferInfo buffer_info = { .buffer = _uniform_buffers[i], .offset = 0, .range = sizeof(Render::GlobalTransformation) };
 
 		std::array<vk::WriteDescriptorSet, 1> descriptor_writes = {
 			{

@@ -99,17 +99,41 @@ namespace Vulkan {
 		std::vector<Primitive> primitives;
 	};
 
+	struct Node {
+
+		std::string name;
+
+		std::vector<int32_t> children;
+
+		int32_t mesh = -1;
+		glm::mat4 model_matrix;
+	};
+
+	struct Scene {
+		std::string name;
+		std::vector<int32_t> nodes;
+	};
+
 	class Model {
 
 	public:
 
 		Model(const Vulkan::Context &context, const Vulkan::Renderer &renderer, const Render::Model& model);
 
+		const Scene& GetDefaultScene() const;
 		const std::vector<Mesh>& GetMeshes() const;
+		const Mesh& GetMesh(int index) const;
 		const std::vector<Material>& GetMaterials() const;
+		const Node& GetNode(int index) const;
 
 	private:
 
+		int32_t _default_scene = -1;
+
+		Scene empty_scene = Scene{ .name = "Empty", .nodes = {} };
+
+		std::vector<Scene> _scenes;
+		std::vector<Node> _nodes;
 		std::vector<Mesh> _meshes;
 		std::vector<Material> _materials;
 		std::vector<Image> _images;
