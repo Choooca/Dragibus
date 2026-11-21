@@ -6,6 +6,7 @@
 
 #include <vulkan/vulkan_raii.hpp>
 #include <render/rhi/vulkan/resource_utils.h>
+#include <render/rhi/vulkan/descriptor_utils.h>
 #include <render/primitives.h>
 
 namespace Render {
@@ -30,8 +31,8 @@ namespace Vulkan {
 			return out;
 		}
 
-		static std::array<vk::VertexInputAttributeDescription, 4> GetAttributeDescription() {
-			std::array<vk::VertexInputAttributeDescription, 4> out{};
+		static std::vector<vk::VertexInputAttributeDescription> GetAttributeDescription() {
+			std::vector<vk::VertexInputAttributeDescription> out(4);
 
 			out[0].binding = 0;
 			out[0].location = 0;
@@ -77,8 +78,9 @@ namespace Vulkan {
 		static constexpr uint8_t MATERIAL_TEXTURE_COUNT = 5;
 
 		std::string name = "";
-		vk::DescriptorSet descriptor_sets = nullptr;
 		DeviceLocalBuffer uniform_buffer;
+		vk::DescriptorBufferInfo uniform_buffer_info;
+		std::vector<vk::DescriptorImageInfo> image_infos;
 	};
 
 	struct Primitive {
@@ -123,7 +125,8 @@ namespace Vulkan {
 		const Scene& GetDefaultScene() const;
 		const std::vector<Mesh>& GetMeshes() const;
 		const Mesh& GetMesh(int index) const;
-		const std::vector<Material>& GetMaterials() const;
+		vk::DescriptorSet GetMaterialDescriptor(int index) const;
+		vk::DescriptorSet GetDefaultMaterialDescriptor() const;
 		const Node& GetNode(int index) const;
 
 	private:
@@ -136,6 +139,7 @@ namespace Vulkan {
 		std::vector<Node> _nodes;
 		std::vector<Mesh> _meshes;
 		std::vector<Material> _materials;
+		DescriptorSetGroup _mat_descriptor_sets;
 		std::vector<Image> _images;
 		std::vector<vk::raii::Sampler> _samplers;
 
@@ -146,9 +150,6 @@ namespace Vulkan {
 			int base_color_tex_idx, int emmisive_tex_idx, int normal_tex_idx,
 			int occlusion_tex_idx, int metallic_roughness_tex_idx,
 			glm::vec4 base_color, glm::vec3 emissive, float metallic_factor, float roughness_factor);
-
-		vk::raii::DescriptorPool _descriptor_pool = nullptr;
-		std::vector<vk::raii::DescriptorSet> _descriptor_sets;
 
 		//TODO move default 
 		Image _default_white;

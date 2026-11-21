@@ -5,35 +5,11 @@
 #include <render/rhi/vulkan/renderer.h>
 #include <utils/build_macro.h>
 #include <utils/debug_macro.h>
+#include <render/rhi/vulkan/descriptor_layouts.h>
 
 Vulkan::Model::Model(const Vulkan::Context& context, const Vulkan::Renderer& renderer, const Render::Model& model)
 {
 	uint32_t material_count = model.materials.size() + 1;
-
-	std::array<vk::DescriptorPoolSize, 2> pool_sizes{
-		{
-			{ .type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = material_count * Material::MATERIAL_TEXTURE_COUNT },
-			{ .type = vk::DescriptorType::eUniformBuffer, .descriptorCount = material_count }
-		}
-	};
-
-	vk::DescriptorPoolCreateInfo descriptor_pool_info = {
-		.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-		.maxSets = material_count,
-		.poolSizeCount = static_cast<uint32_t>(pool_sizes.size()),
-		.pPoolSizes = pool_sizes.data()
-	};
-
-	_descriptor_pool = vk::raii::DescriptorPool(context.GetDevice(), descriptor_pool_info);
-
-	std::vector<vk::DescriptorSetLayout> layouts(material_count, renderer.GetMatDescriptorSetLayout());
-	vk::DescriptorSetAllocateInfo alloc_info{
-		.descriptorPool = _descriptor_pool,
-		.descriptorSetCount = static_cast<uint32_t>(material_count),
-		.pSetLayouts = layouts.data()
-	};
-
-	_descriptor_sets = context.GetDevice().allocateDescriptorSets(alloc_info);
 
 	{
 		auto [image_default_white, default_white_memory] = CreateTexture(context, "default_white.png", vk::Format::eR8G8B8A8Srgb);
@@ -175,10 +151,25 @@ Vulkan::Model::Model(const Vulkan::Context& context, const Vulkan::Renderer& ren
 		);
 	}
 
+
 	_materials.emplace_back(
 		CreateMaterial(context, model, "Default Material",
 			model.materials.size(), -1, -1, -1, -1, -1, glm::vec4(1), glm::vec3(0), 0, 1)
 	);
+
+	DescriptorSetGroupDesc mat_group_desc;
+	mat_group_desc.descriptor_set_layout = renderer.GetMatDescriptorSetLayout();
+	mat_group_desc.bindings = MAT_BINDINGS;
+	mat_group_desc.resources.resize(material_count);
+
+	for (uint32_t i = 0; i < material_count; ++i) {
+		mat_group_desc.resources[i] = {
+			_materials[i].image_infos,
+			std::vector{ _materials[i].uniform_buffer_info }
+		};
+	}
+
+	_mat_descriptor_sets = CreateDescriptorSetGroup(context, mat_group_desc);
 }
 
 const Vulkan::Scene& Vulkan::Model::GetDefaultScene() const { 
@@ -203,7 +194,15 @@ const Vulkan::Mesh& Vulkan::Model::GetMesh(int index) const {
 	return _meshes[index]; 
 }
 
-const std::vector<Vulkan::Material>& Vulkan::Model::GetMaterials() const { return _materials; }
+vk::DescriptorSet Vulkan::Model::GetMaterialDescriptor(int index) const { 
+	
+	if (index < 0 || index >= _mat_descriptor_sets.sets.size() - 1)
+		THROW_RUNTIME_ERROR("Index out of range");
+
+	return _mat_descriptor_sets.sets[index]; 
+}
+
+vk::DescriptorSet Vulkan::Model::GetDefaultMaterialDescriptor() const { return _mat_descriptor_sets.sets.back(); }
 
 const Vulkan::Node& Vulkan::Model::GetNode(int index) const { 
 	if (index < 0 || static_cast<size_t>(index) >= _nodes.size())
@@ -232,7 +231,7 @@ Vulkan::Material Vulkan::Model::CreateMaterial(
 	int base_color_tex_idx, int emmisive_tex_idx, int normal_tex_idx, int occlusion_tex_idx, int metallic_roughness_tex_idx,
 	glm::vec4 base_color, glm::vec3 emissive, float metallic_factor, float roughness_factor)
 {
-	std::array<vk::DescriptorImageInfo, Material::MATERIAL_TEXTURE_COUNT> descriptor_image_infos = {
+	std::vector<vk::DescriptorImageInfo> image_infos = {
 		{
 			{ CreateImageInfo(model, base_color_tex_idx, _default_white.view) },
 			{ CreateImageInfo(model, emmisive_tex_idx, _default_white.view) },
@@ -258,34 +257,11 @@ Vulkan::Material Vulkan::Model::CreateMaterial(
 		.range = sizeof(Material::Uniform)
 	};
 
-	vk::DescriptorSet descriptor_set = _descriptor_sets[material_index];
-	std::array<vk::WriteDescriptorSet, 2> descriptor_write{
-		{
-			{
-				.dstSet = descriptor_set,
-				.dstBinding = 0,
-				.dstArrayElement = 0,
-				.descriptorCount = descriptor_image_infos.size(),
-				.descriptorType = vk::DescriptorType::eCombinedImageSampler,
-				.pImageInfo = descriptor_image_infos.data()
-			},
-			{
-				.dstSet = descriptor_set,
-				.dstBinding = 1,
-				.dstArrayElement = 0,
-				.descriptorCount = 1,
-				.descriptorType = vk::DescriptorType::eUniformBuffer,
-				.pBufferInfo = &descriptor_buffer_info
-			}
-		}
-	};
-
-	context.GetDevice().updateDescriptorSets(descriptor_write, {});
-
 	return {
 		material_name,
-		descriptor_set,
-		std::move(uniform_buffer)
+		std::move(uniform_buffer),
+		descriptor_buffer_info,
+		std::move(image_infos)
 	};
 }
 

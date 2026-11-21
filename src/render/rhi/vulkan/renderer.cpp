@@ -19,49 +19,20 @@
 #include <render/rhi/vulkan/frame_resources.h>
 #include <render/rhi/vulkan/swap_chain_resources.h>
 #include <render/rhi/vulkan/model.h>
+#include <render/rhi/vulkan/pipeline_utils.h>
+#include <render/rhi/vulkan/descriptor_utils.h>
+#include <render/rhi/vulkan/descriptor_layouts.h>
 
  Vulkan::Renderer::Renderer(const Vulkan::Context& context)
 	: _context(context)
 {
 	_swap_chain_ressources = std::make_unique<SwapChainResources>(context);
 
-	// ----------------- Shaders -----------------
-
-	auto shader_code = ReadFile(std::string(SHADERS_DIR) + "simple_shader.spv");
-	vk::ShaderModuleCreateInfo shader_module_create_info{ .codeSize = shader_code.size() * sizeof(char), .pCode = reinterpret_cast<const uint32_t*>(shader_code.data()) };
-	vk::raii::ShaderModule shader_module = vk::raii::ShaderModule(_context.GetDevice(), shader_module_create_info);
-
-	vk::PipelineShaderStageCreateInfo vert_shader_stage_info{
-		.stage = vk::ShaderStageFlagBits::eVertex,
-		.module = shader_module,
-		.pName = ShaderEntryPoints::VERTEX
-	};
-
-	vk::PipelineShaderStageCreateInfo frag_shader_stage_info{
-		.stage = vk::ShaderStageFlagBits::eFragment,
-		.module = shader_module,
-		.pName = ShaderEntryPoints::FRAGMENT
-	};
-
-	vk::PipelineShaderStageCreateInfo shader_stage_infos[] = {
-		vert_shader_stage_info,
-		frag_shader_stage_info
-	};
-
 	// ----------------- Descriptor Set -----------------
 	
-	_scn_descriptor_set_layout = CreateDescriptorSetLayout({
-		{ .binding = 0, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eFragment }
-		});
-
-	_obj_descriptor_set_layout = CreateDescriptorSetLayout({ 
-			{ .binding = 0, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eVertex } 
-		});
-
-	_mat_descriptor_set_layout = CreateDescriptorSetLayout({
-				{ .binding = 0, .descriptorType = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = Vulkan::Material::MATERIAL_TEXTURE_COUNT, .stageFlags = vk::ShaderStageFlagBits::eFragment },
-				{ .binding = 1, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eFragment }
-		});
+	_scn_descriptor_set_layout = CreateDescriptorSetLayout(SCN_BINDINGS);
+	_obj_descriptor_set_layout = CreateDescriptorSetLayout(OBJ_BINDINGS);
+	_mat_descriptor_set_layout = CreateDescriptorSetLayout(MAT_BINDINGS);
 
 	std::array<vk::DescriptorSetLayout, 3> descriptor_set_layout{ 
 		_scn_descriptor_set_layout,
@@ -71,32 +42,8 @@
 
 	// ----------------- Lights -----------------
 
-	std::array<vk::DescriptorPoolSize, 1> light_pool_sizes = { 
-		{
-			{ .type = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1 }
-		} 
-	};
-
-	vk::DescriptorPoolCreateInfo light_descriptor_pool_info = {
-		.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-		.maxSets = 1,
-		.poolSizeCount = static_cast<uint32_t>(light_pool_sizes.size()),
-		.pPoolSizes = light_pool_sizes.data()
-	};
-
-	_light_descriptor_pool = vk::raii::DescriptorPool(_context.GetDevice(), light_descriptor_pool_info);
-
-	std::array<vk::DescriptorSetLayout, 1> light_descriptor_set_layouts = { _scn_descriptor_set_layout };
-	vk::DescriptorSetAllocateInfo alloc_info = {
-		.descriptorPool = _light_descriptor_pool,
-		.descriptorSetCount = 1,
-		.pSetLayouts = light_descriptor_set_layouts.data()
-	};
-
-	_light_descriptor_sets = _context.GetDevice().allocateDescriptorSets(alloc_info);
-
 	DirectionalLight dir_light = {
-		.direction = glm::normalize(glm::vec3({ -.2, -.9, -.5})),
+		.direction = glm::normalize(glm::vec3({ -.2, -.9, -.5 })),
 		.color = glm::vec4(1.0, 1.0, 1.0, 1.0)
 	};
 
@@ -108,57 +55,16 @@
 		.range = sizeof(DirectionalLight)
 	};
 
-	std::array<vk::WriteDescriptorSet, 1> light_write_descriptor_set = {
+	_light_descriptor_sets = CreateDescriptorSetGroup(_context, 
 		{
-			{
-				.dstSet = _light_descriptor_sets.front(),
-				.dstBinding = 0,
-				.dstArrayElement = 0,
-				.descriptorCount = 1,
-				.descriptorType = vk::DescriptorType::eUniformBuffer,
-				.pBufferInfo = &dir_light_info
-			}
+			.descriptor_set_layout = _scn_descriptor_set_layout,
+			.bindings = SCN_BINDINGS,
+			.resources = { { {
+					std::vector{ dir_light_info }
+			} } }
 		}
-	};
+	);
 
-	_context.GetDevice().updateDescriptorSets(light_write_descriptor_set, {});
-
-	// ----------------- Graphics Pipeline -----------------
-
-	std::vector<vk::DynamicState> dynamic_state = { vk::DynamicState::eViewport, vk::DynamicState::eScissor };
-	vk::PipelineDynamicStateCreateInfo dynamic_state_info{ .dynamicStateCount = static_cast<uint32_t>(dynamic_state.size()), .pDynamicStates = dynamic_state.data() };
-
-	auto binding_description = Vertex::GetBindingDescription();
-	auto attribute_description = Vertex::GetAttributeDescription();
-	vk::PipelineVertexInputStateCreateInfo vertex_input_info = {
-		.vertexBindingDescriptionCount = 1,
-		.pVertexBindingDescriptions = &binding_description,
-		.vertexAttributeDescriptionCount = attribute_description.size(),
-		.pVertexAttributeDescriptions = attribute_description.data()
-	};
-	vk::PipelineInputAssemblyStateCreateInfo input_assembly_info{ .topology = vk::PrimitiveTopology::eTriangleList };
-	vk::PipelineViewportStateCreateInfo viewport_state_info{ .viewportCount = 1, .scissorCount = 1 };
-	vk::PipelineRasterizationStateCreateInfo rasterizer_info{ 
-		.depthClampEnable = vk::False,
-		.rasterizerDiscardEnable = vk::False,
-		.polygonMode = vk::PolygonMode::eFill,
-		.cullMode = vk::CullModeFlagBits::eBack,
-		.frontFace = vk::FrontFace::eCounterClockwise,
-		.depthBiasEnable = vk::False,
-		.lineWidth = 1.0f };
-	vk::PipelineMultisampleStateCreateInfo multisampling_info{ .rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False };
-	vk::PipelineColorBlendAttachmentState color_blend_attachment_info{
-		.blendEnable = vk::False,
-		.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA };
-	vk::PipelineColorBlendStateCreateInfo color_blending_info{
-		.logicOpEnable = vk::False, .logicOp = vk::LogicOp::eCopy, .attachmentCount = 1, .pAttachments = &color_blend_attachment_info };
-	vk::PipelineDepthStencilStateCreateInfo depth_stencil_info{
-		.depthTestEnable = vk::True,
-		.depthWriteEnable = vk::True,
-		.depthCompareOp = vk::CompareOp::eLess,
-		.depthBoundsTestEnable = vk::False,
-		.stencilTestEnable = vk::False 
-	};
 	vk::PushConstantRange node_push_constant_range = {
 		.stageFlags = vk::ShaderStageFlagBits::eVertex,
 		.offset = 0,
@@ -167,30 +73,28 @@
 	std::array<vk::PushConstantRange, 1> push_constant_ranges = {
 		node_push_constant_range
 	};
-	vk::PipelineLayoutCreateInfo pipeline_layout_info{ 
+
+	vk::PipelineLayoutCreateInfo pipeline_layout_info{
 		.setLayoutCount = static_cast<uint32_t>(descriptor_set_layout.size()),
 		.pSetLayouts = descriptor_set_layout.data(),
 		.pushConstantRangeCount = push_constant_ranges.size(),
-		.pPushConstantRanges = push_constant_ranges.data() 
+		.pPushConstantRanges = push_constant_ranges.data()
 	};
-	_pipeline_layout = vk::raii::PipelineLayout(_context.GetDevice(), pipeline_layout_info);
 
-	vk::StructureChain<vk::GraphicsPipelineCreateInfo, vk::PipelineRenderingCreateInfo> pipeline_info_chain = {
-	{ 
-		.stageCount = 2,
-		.pStages = shader_stage_infos,
-		.pVertexInputState = &vertex_input_info,
-		.pInputAssemblyState = &input_assembly_info,
-		.pViewportState = &viewport_state_info,
-		.pRasterizationState = &rasterizer_info,
-		.pMultisampleState = &multisampling_info,
-		.pDepthStencilState = &depth_stencil_info,
-		.pColorBlendState = &color_blending_info,
-		.pDynamicState = &dynamic_state_info,
-		.layout = _pipeline_layout,
-		.renderPass = nullptr },
-	{ .colorAttachmentCount = 1, .pColorAttachmentFormats = &(_context.GetSurfaceFormat().format), .depthAttachmentFormat = _context.GetDepthFormat()}};
-	_graphics_pipeline = vk::raii::Pipeline(_context.GetDevice(), nullptr, pipeline_info_chain.get<vk::GraphicsPipelineCreateInfo>());
+	_pipeline_layout = vk::raii::PipelineLayout(_context.GetDevice(), pipeline_layout_info);
+	std::vector<vk::VertexInputAttributeDescription> vertex_input_attribute = Vertex::GetAttributeDescription();
+	std::vector<vk::VertexInputBindingDescription> vertex_input_binding = { Vertex::GetBindingDescription() };
+
+	GraphicsPipelineDesc graphics_pipeline_desc = {
+		.pipeline_layout = _pipeline_layout,
+		.attachment_format = context.GetSurfaceFormat().format,
+		.depth_format = _context.GetDepthFormat(),
+		.vertex_input_attributes = vertex_input_attribute,
+		.vertex_input_bindings = vertex_input_binding,
+		.file_name = "simple_shader.spv"
+	};
+
+	_graphics_pipeline = CreateGraphicsPipeline(_context, graphics_pipeline_desc);
 
 	// ----------------- Sync -----------------
 
@@ -297,7 +201,7 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 	command_buffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), _swap_chain_ressources->GetSwapChainExtent()));
 
 	vk::DescriptorSet obj_descriptor_set = _frame_resources->GetDescriptorSet(current_frame);
-	vk::DescriptorSet light_descriptor_set = _light_descriptor_sets[0];
+	vk::DescriptorSet light_descriptor_set = _light_descriptor_sets.sets[0];
 	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 0, light_descriptor_set, nullptr);
 	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 1, obj_descriptor_set, nullptr);
 
@@ -359,8 +263,8 @@ void Vulkan::Renderer::RenderNode(vk::raii::CommandBuffer& command_buffer, const
 void Vulkan::Renderer::RenderMesh(vk::raii::CommandBuffer& command_buffer, const Vulkan::Model& model, const Vulkan::Mesh& mesh)
 {
 	for (const auto& primitive : mesh.primitives) {
-		const Vulkan::Material& mat = primitive.GetMaterialIndex() != -1 ? model.GetMaterials()[primitive.GetMaterialIndex()] : model.GetMaterials().back();
-		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 2, mat.descriptor_sets, nullptr);
+		vk::DescriptorSet descriptor_set = primitive.GetMaterialIndex() != -1 ? model.GetMaterialDescriptor(primitive.GetMaterialIndex()) : model.GetDefaultMaterialDescriptor();
+		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 2, descriptor_set, nullptr);
 
 		vk::DeviceSize offset = { 0 };
 		command_buffer.bindVertexBuffers(0, primitive.GetVertexBuffer().GetBuffer(), offset);
@@ -369,11 +273,11 @@ void Vulkan::Renderer::RenderMesh(vk::raii::CommandBuffer& command_buffer, const
 	}
 }
 
-vk::raii::DescriptorSetLayout Vulkan::Renderer::CreateDescriptorSetLayout(const std::vector<vk::DescriptorSetLayoutBinding>& bidings)
+vk::raii::DescriptorSetLayout Vulkan::Renderer::CreateDescriptorSetLayout(std::span<const vk::DescriptorSetLayoutBinding> bindings)
 {
 	vk::DescriptorSetLayoutCreateInfo mat_descriptor_set_layout_create_info = {
-		.bindingCount = static_cast<uint32_t>(bidings.size()),
-		.pBindings = bidings.data()
+		.bindingCount = static_cast<uint32_t>(bindings.size()),
+		.pBindings = bindings.data()
 	};
 	return vk::raii::DescriptorSetLayout(_context.GetDevice(), mat_descriptor_set_layout_create_info);
 }

@@ -9,5 +9,7 @@ target_sources(Dragibus
 		resource_utils.cpp
 		model.cpp
 		context.cpp
+		pipeline_utils.cpp
+		descriptor_utils.cpp
 )
 

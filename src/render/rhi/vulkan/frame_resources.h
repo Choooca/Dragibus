@@ -2,7 +2,10 @@
 
 #include <vector>
 
+#include <render/rhi/vulkan/descriptor_utils.h>
+
 #include <vulkan/vulkan_raii.hpp>
+
 
 namespace Vulkan {
 
@@ -35,9 +38,7 @@ namespace Vulkan {
 		std::vector<vk::raii::DeviceMemory> _uniform_buffers_memory;
 		std::vector<void*> _uniform_buffers_mapped;
 
-		vk::raii::DescriptorPool _descriptor_pool = nullptr;
-
-		std::vector<vk::raii::DescriptorSet> _descriptor_sets;
+		DescriptorSetGroup _obj_descriptor_sets;
 	};
 
 }

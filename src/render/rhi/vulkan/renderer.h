@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <span>
 
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan_raii.hpp>
@@ -9,7 +10,7 @@
 #include <utils/custom_type.h>
 #include <render/primitives.h>
 #include <render/rhi/vulkan/resource_utils.h>
-
+#include <render/rhi/vulkan/descriptor_utils.h>
 
 class Camera;
 
@@ -62,8 +63,7 @@ namespace Vulkan {
 
 		std::vector<Vulkan::Model> _models;
 
-		vk::raii::DescriptorPool _light_descriptor_pool = nullptr;
-		std::vector<vk::raii::DescriptorSet> _light_descriptor_sets;
+		DescriptorSetGroup _light_descriptor_sets;
 		DeviceLocalBuffer _dir_light_buffer;
 
 		void RecreateSwapChainResources();
@@ -77,6 +77,6 @@ namespace Vulkan {
 		void RenderNode(vk::raii::CommandBuffer &command_buffer, const Vulkan::Model &model, const Vulkan::Node &node, const glm::mat4& parent_model_mat);
 		void RenderMesh(vk::raii::CommandBuffer& command_buffer, const Vulkan::Model& model, const Vulkan::Mesh& mesh);
 
-		vk::raii::DescriptorSetLayout CreateDescriptorSetLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bidings);
+		vk::raii::DescriptorSetLayout CreateDescriptorSetLayout(std::span<const vk::DescriptorSetLayoutBinding> bindings);
 	};
 }
