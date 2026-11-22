@@ -7,7 +7,7 @@
 #include <render/rhi/vulkan/resource_utils.h>
 #include "descriptor_layouts.h"
 
-Vulkan::SwapChainResources::SwapChainResources(const Vulkan::Context& context, vk::Sampler post_process_sampler, vk::DescriptorSetLayout tonemap_descriptor_set_layout)
+Vulkan::SwapChainResources::SwapChainResources(const Vulkan::Context& context, vk::Sampler post_process_sampler, vk::DescriptorSetLayout tonemap_descriptor_set_layout, vk::SwapchainKHR old_swap_chain)
 	: _context(context)
 {
 
@@ -52,7 +52,9 @@ Vulkan::SwapChainResources::SwapChainResources(const Vulkan::Context& context, v
 											   .preTransform = surface_capabilities.currentTransform,
 											   .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
 											   .presentMode = _present_mode,
-											   .clipped = true };
+											   .clipped = true,
+											   .oldSwapchain = old_swap_chain
+	};
 
 	_swap_chain = vk::raii::SwapchainKHR(_context.GetDevice(), swap_chain_create_info);
 
@@ -91,6 +93,11 @@ Vulkan::SwapChainResources::SwapChainResources(const Vulkan::Context& context, v
 		.resources = { { { std::vector{ offscreen_image_info } } } }
 	};
 	_tonemap_descriptor_sets = CreateDescriptorSetGroup(_context, tonemap_descriptor_desc);
+
+	_render_finish_semaphore.reserve(_swap_chain_image_count);
+	for (int i = 0; i < _swap_chain_image_count; ++i) {
+		_render_finish_semaphore.emplace_back(_context.GetDevice(), vk::SemaphoreCreateInfo());
+	}
 }
 
 Vulkan::SwapChainResources::~SwapChainResources(){}
@@ -124,3 +131,11 @@ vk::Image Vulkan::SwapChainResources::GetDepthImage() { return _depth_image; }
 vk::ImageView Vulkan::SwapChainResources::GetDepthImageView() { return _depth_image_view; }
 
 vk::DescriptorSet Vulkan::SwapChainResources::GetTonemapDescriptorSet() const { return _tonemap_descriptor_sets.sets[0]; }
+
+vk::Semaphore Vulkan::SwapChainResources::GetRenderFinishSemaphore(int index) const
+{
+	if (index < 0 || index >= _render_finish_semaphore.size())
+		THROW_INVALID_ARGUMENT("Index out of range");
+
+	return _render_finish_semaphore[index];
+}

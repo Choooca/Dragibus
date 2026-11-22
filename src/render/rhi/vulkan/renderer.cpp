@@ -135,13 +135,6 @@
 
 	_swap_chain_ressources = std::make_unique<SwapChainResources>(context, _post_process_sampler, _tonemap_descriptor_set_layout);
 
-	// ----------------- Sync -----------------
-
-	_render_finish_semaphore.reserve(_swap_chain_ressources->GetSwapChainImageCount());
-	for (int i = 0; i < _swap_chain_ressources->GetSwapChainImageCount(); ++i) {
-		_render_finish_semaphore.emplace_back(_context.GetDevice(), vk::SemaphoreCreateInfo());
-	}
-
 	_frame_resources = std::make_unique<FrameResources>(context, *this);
 
 	glfwSetWindowUserPointer(_context.GetWindow(), this);
@@ -164,7 +157,7 @@ void Vulkan::Renderer::RecreateSwapChainResources()
 
 	_context.GetDevice().waitIdle();
 
-	_swap_chain_ressources = std::make_unique<SwapChainResources>(_context, _post_process_sampler, _tonemap_descriptor_set_layout);
+	_swap_chain_ressources = std::make_unique<SwapChainResources>(_context, _post_process_sampler, _tonemap_descriptor_set_layout, _swap_chain_ressources->GetSwapchain());
 }
 
 void Vulkan::Renderer::FramebufferResizedCallback(GLFWwindow* window, int width, int height)
@@ -397,7 +390,7 @@ void Vulkan::Renderer::Loop(Camera* camera)
 
 	vk::Semaphore wait_semaphore[] = { _frame_resources->GetImageAvailableSemaphore(_current_frame) };
 	vk::PipelineStageFlags wait_stages = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
-	vk::Semaphore signal_semaphore[] = { _render_finish_semaphore[swap_chain_image_index] };
+	vk::Semaphore signal_semaphore[] = { _swap_chain_ressources->GetRenderFinishSemaphore(swap_chain_image_index) };
 
 	const vk::SubmitInfo submit_info{
 		.waitSemaphoreCount = 1,

@@ -62,7 +62,6 @@ namespace Vulkan {
 		vk::raii::PipelineLayout _tonemap_pipeline_layout = nullptr;
 		vk::raii::Pipeline _graphics_pipeline = nullptr;
 		vk::raii::Pipeline _tonemap_pipeline = nullptr;
-		std::vector<vk::raii::Semaphore> _render_finish_semaphore;
 		std::unique_ptr<SwapChainResources> _swap_chain_ressources;
 		std::unique_ptr<FrameResources> _frame_resources;
 

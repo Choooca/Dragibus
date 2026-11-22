@@ -12,7 +12,7 @@ namespace Vulkan {
 	class SwapChainResources {
 
 	public:
-		SwapChainResources(const Vulkan::Context &context, vk::Sampler post_process_sampler, vk::DescriptorSetLayout tonemap_descriptor_set_layout);
+		SwapChainResources(const Vulkan::Context &context, vk::Sampler post_process_sampler, vk::DescriptorSetLayout tonemap_descriptor_set_layout, vk::SwapchainKHR old_swap_chain = nullptr);
 		~SwapChainResources();
 
 		int GetSwapChainImageCount();
@@ -33,6 +33,8 @@ namespace Vulkan {
 
 		vk::DescriptorSet GetTonemapDescriptorSet() const;
 
+		vk::Semaphore GetRenderFinishSemaphore(int index) const;
+
 	private:
 
 		const Vulkan::Context &_context;
@@ -52,6 +54,8 @@ namespace Vulkan {
 		vk::raii::ImageView _offscreen_view = nullptr;
 
 		DescriptorSetGroup _tonemap_descriptor_sets;
+
+		std::vector<vk::raii::Semaphore> _render_finish_semaphore;
 
 		int _swap_chain_image_count;
 	};
