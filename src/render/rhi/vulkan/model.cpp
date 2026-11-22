@@ -33,7 +33,7 @@ Vulkan::Model::Model(const Vulkan::Context& context, const Vulkan::Renderer& ren
 		};
 	}
 
-	_default_sampler = CreateSampler(context);
+	_default_sampler = CreateSampler(context, vk::SamplerAddressMode::eRepeat, vk::True);
 
 	_default_scene = model.default_scene;
 
@@ -134,7 +134,7 @@ Vulkan::Model::Model(const Vulkan::Context& context, const Vulkan::Renderer& ren
 	for (const auto& sampler : model.samplers) {
 
 		//TODO create good sampler
-		_samplers.emplace_back(CreateSampler(context));
+		_samplers.emplace_back(CreateSampler(context, vk::SamplerAddressMode::eRepeat, vk::True));
 	}
 
 	_materials.reserve(material_count);

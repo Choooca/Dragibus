@@ -67,5 +67,5 @@ namespace Vulkan {
 
 	void CopyBufferToImage(vk::raii::CommandBuffer& command_buffer, const vk::raii::Buffer& buffer, vk::raii::Image &image, uint32_t width, uint32_t height);
 
-	vk::raii::Sampler CreateSampler(const Context& context);
+	vk::raii::Sampler CreateSampler(const Context& context, vk::SamplerAddressMode address_mode, vk::Bool32 anisotropy);
 }

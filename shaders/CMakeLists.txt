@@ -4,6 +4,7 @@ find_program(SLANGC_EXECUTABLE slangc HINTS "$ENV{VULKAN_SDK}/Bin" REQUIRED)
 
 set(SHADER_SLANG_SOURCES
 	simple_shader.slang
+	tonemap.slang
 )
 
 set(SHADER_SPIRV_OUTPUTS)

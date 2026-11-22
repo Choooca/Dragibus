@@ -15,6 +15,7 @@ namespace Vulkan {
 		vk::Format depth_format;
 		std::vector<vk::VertexInputAttributeDescription> vertex_input_attributes;
 		std::vector<vk::VertexInputBindingDescription> vertex_input_bindings;
+		vk::CullModeFlags cull_mode = vk::CullModeFlagBits::eBack;
 		std::string file_name;
 	};
 

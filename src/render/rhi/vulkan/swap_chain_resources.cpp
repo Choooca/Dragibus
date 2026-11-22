@@ -5,8 +5,9 @@
 
 #include <render/rhi/vulkan/renderer.h>
 #include <render/rhi/vulkan/resource_utils.h>
+#include "descriptor_layouts.h"
 
-Vulkan::SwapChainResources::SwapChainResources(const Vulkan::Context& context)
+Vulkan::SwapChainResources::SwapChainResources(const Vulkan::Context& context, vk::Sampler post_process_sampler, vk::DescriptorSetLayout tonemap_descriptor_set_layout)
 	: _context(context)
 {
 
@@ -65,8 +66,31 @@ Vulkan::SwapChainResources::SwapChainResources(const Vulkan::Context& context)
 		_image_views.emplace_back(CreateImageView(context, image, _context.GetSurfaceFormat().format, vk::ImageAspectFlagBits::eColor));
 	}
 
-	std::tie(_depth_image, _depth_image_memory) = CreateImage(context, _extent.width, _extent.height, context.GetDepthFormat(), vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+	std::tie(_offscreen_image, _offscreen_memory) = CreateImage(
+		_context, _extent.width, _extent.height,
+		Renderer::HDR_FORMAT, vk::ImageTiling::eOptimal,
+		vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+	_offscreen_view = CreateImageView(_context, _offscreen_image, Renderer::HDR_FORMAT, vk::ImageAspectFlagBits::eColor);
+
+	std::tie(_depth_image, _depth_image_memory) = CreateImage(context, _extent.width, _extent.height,
+		context.GetDepthFormat(), vk::ImageTiling::eOptimal,
+		vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+
 	_depth_image_view = CreateImageView(context, _depth_image, context.GetDepthFormat(), vk::ImageAspectFlagBits::eDepth);
+
+	vk::DescriptorImageInfo offscreen_image_info = {
+		.sampler = post_process_sampler,
+		.imageView = _offscreen_view,
+		.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+	};
+
+	DescriptorSetGroupDesc tonemap_descriptor_desc = {
+		.descriptor_set_layout = tonemap_descriptor_set_layout,
+		.bindings = TONEMAPPING_BINDINGS,
+		.resources = { { { std::vector{ offscreen_image_info } } } }
+	};
+	_tonemap_descriptor_sets = CreateDescriptorSetGroup(_context, tonemap_descriptor_desc);
 }
 
 Vulkan::SwapChainResources::~SwapChainResources(){}
@@ -91,12 +115,12 @@ vk::ImageView Vulkan::SwapChainResources::GetSwapChainImageView(int index)
 	return _image_views[index];
 }
 
-vk::ImageView Vulkan::SwapChainResources::GetDepthImageView()
-{
-	return _depth_image_view;
-}
+vk::Image Vulkan::SwapChainResources::GetOffScreenImage() { return _offscreen_image; }
 
-vk::Image Vulkan::SwapChainResources::GetDepthImage()
-{
-	return _depth_image;
-}
+vk::ImageView Vulkan::SwapChainResources::GetOffScreenImageView() { return _offscreen_view; }
+
+vk::Image Vulkan::SwapChainResources::GetDepthImage() { return _depth_image; }
+
+vk::ImageView Vulkan::SwapChainResources::GetDepthImageView() { return _depth_image_view; }
+
+vk::DescriptorSet Vulkan::SwapChainResources::GetTonemapDescriptorSet() const { return _tonemap_descriptor_sets.sets[0]; }

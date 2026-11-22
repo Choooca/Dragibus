@@ -141,7 +141,7 @@ void Vulkan::CopyBufferToImage(vk::raii::CommandBuffer& command_buffer, const vk
 	command_buffer.copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
 }
 
-vk::raii::Sampler Vulkan::CreateSampler(const Context& context)
+vk::raii::Sampler Vulkan::CreateSampler(const Context& context, vk::SamplerAddressMode address_mode, vk::Bool32 anisotropy)
 {
 	vk::PhysicalDeviceProperties properties = context.GetPhysicalDevice().getProperties();
 
@@ -149,11 +149,11 @@ vk::raii::Sampler Vulkan::CreateSampler(const Context& context)
 		.magFilter = vk::Filter::eLinear,
 		.minFilter = vk::Filter::eLinear,
 		.mipmapMode = vk::SamplerMipmapMode::eLinear,
-		.addressModeU = vk::SamplerAddressMode::eRepeat,
-		.addressModeV = vk::SamplerAddressMode::eRepeat,
-		.addressModeW = vk::SamplerAddressMode::eRepeat,
+		.addressModeU = address_mode,
+		.addressModeV = address_mode,
+		.addressModeW = address_mode,
 		.mipLodBias = 0.0f,
-		.anisotropyEnable = vk::True,
+		.anisotropyEnable = anisotropy,
 		.maxAnisotropy = properties.limits.maxSamplerAnisotropy,
 		.compareEnable = vk::False,
 		.compareOp = vk::CompareOp::eAlways };

@@ -26,8 +26,6 @@
  Vulkan::Renderer::Renderer(const Vulkan::Context& context)
 	: _context(context)
 {
-	_swap_chain_ressources = std::make_unique<SwapChainResources>(context);
-
 	// ----------------- Descriptor Set -----------------
 	
 	_scn_descriptor_set_layout = CreateDescriptorSetLayout(SCN_BINDINGS);
@@ -44,7 +42,7 @@
 
 	DirectionalLight dir_light = {
 		.direction = glm::normalize(glm::vec3({ -.2, -.9, -.5 })),
-		.color = glm::vec4(1.0, 1.0, 1.0, 1.0)
+		.color = glm::vec4(10.0, 10.0, 10.0, 1.0)
 	};
 
 	_dir_light_buffer = CreateDeviceLocalBuffer(_context, dir_light, vk::BufferUsageFlagBits::eUniformBuffer);
@@ -74,27 +72,68 @@
 		node_push_constant_range
 	};
 
-	vk::PipelineLayoutCreateInfo pipeline_layout_info{
+	vk::PipelineLayoutCreateInfo graphics_pipeline_layout_info{
 		.setLayoutCount = static_cast<uint32_t>(descriptor_set_layout.size()),
 		.pSetLayouts = descriptor_set_layout.data(),
 		.pushConstantRangeCount = push_constant_ranges.size(),
 		.pPushConstantRanges = push_constant_ranges.data()
 	};
 
-	_pipeline_layout = vk::raii::PipelineLayout(_context.GetDevice(), pipeline_layout_info);
+	_graphics_pipeline_layout = vk::raii::PipelineLayout(_context.GetDevice(), graphics_pipeline_layout_info);
 	std::vector<vk::VertexInputAttributeDescription> vertex_input_attribute = Vertex::GetAttributeDescription();
 	std::vector<vk::VertexInputBindingDescription> vertex_input_binding = { Vertex::GetBindingDescription() };
 
 	GraphicsPipelineDesc graphics_pipeline_desc = {
-		.pipeline_layout = _pipeline_layout,
-		.attachment_format = context.GetSurfaceFormat().format,
+		.pipeline_layout = _graphics_pipeline_layout,
+		.attachment_format = HDR_FORMAT,
 		.depth_format = _context.GetDepthFormat(),
 		.vertex_input_attributes = vertex_input_attribute,
 		.vertex_input_bindings = vertex_input_binding,
+		.cull_mode = vk::CullModeFlagBits::eBack,
 		.file_name = "simple_shader.spv"
 	};
 
 	_graphics_pipeline = CreateGraphicsPipeline(_context, graphics_pipeline_desc);
+
+	_tonemap_descriptor_set_layout = CreateDescriptorSetLayout(TONEMAPPING_BINDINGS);
+
+	std::vector<vk::DescriptorSetLayout> tonemap_descriptor_set_layouts = {
+		_tonemap_descriptor_set_layout
+	};
+
+	vk::PushConstantRange exposure_push_constant_range = {
+		.stageFlags = vk::ShaderStageFlagBits::eFragment,
+		.offset = 0,
+		.size = sizeof(float)
+	};
+	std::array<vk::PushConstantRange, 1> exposure_push_constant_ranges = {
+		exposure_push_constant_range
+	};
+
+	vk::PipelineLayoutCreateInfo tonemap_pipeline_layout_info{
+		.setLayoutCount = static_cast<uint32_t>(tonemap_descriptor_set_layouts.size()),
+		.pSetLayouts = tonemap_descriptor_set_layouts.data(),
+		.pushConstantRangeCount = static_cast<uint32_t>(exposure_push_constant_ranges.size()),
+		.pPushConstantRanges = exposure_push_constant_ranges.data()
+	};
+
+	_tonemap_pipeline_layout = vk::raii::PipelineLayout(_context.GetDevice(), tonemap_pipeline_layout_info);
+
+	GraphicsPipelineDesc tonemap_pipeline_desc = {
+		.pipeline_layout = _tonemap_pipeline_layout,
+		.attachment_format = context.GetSurfaceFormat().format,
+		.depth_format = vk::Format::eUndefined,
+		.vertex_input_attributes = {},
+		.vertex_input_bindings = {},
+		.cull_mode = vk::CullModeFlagBits::eNone,
+		.file_name = "tonemap.spv"
+	};
+
+	_tonemap_pipeline = CreateGraphicsPipeline(_context, tonemap_pipeline_desc);
+
+	_post_process_sampler = CreateSampler(_context, vk::SamplerAddressMode::eClampToEdge, vk::False);
+
+	_swap_chain_ressources = std::make_unique<SwapChainResources>(context, _post_process_sampler, _tonemap_descriptor_set_layout);
 
 	// ----------------- Sync -----------------
 
@@ -125,7 +164,7 @@ void Vulkan::Renderer::RecreateSwapChainResources()
 
 	_context.GetDevice().waitIdle();
 
-	_swap_chain_ressources = std::make_unique<SwapChainResources>(_context);
+	_swap_chain_ressources = std::make_unique<SwapChainResources>(_context, _post_process_sampler, _tonemap_descriptor_set_layout);
 }
 
 void Vulkan::Renderer::FramebufferResizedCallback(GLFWwindow* window, int width, int height)
@@ -149,30 +188,31 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 	command_buffer.begin({});
 
 	Vulkan::CommandUtils::TransitionImageLayout(
-		command_buffer, _swap_chain_ressources->GetSwapChainImage(swap_chain_image_index),
+		command_buffer, _swap_chain_ressources->GetOffScreenImage(),
 		vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal,
 		{}, vk::AccessFlagBits2::eColorAttachmentWrite,
-		vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+		vk::PipelineStageFlagBits2::eColorAttachmentOutput | vk::PipelineStageFlagBits2::eFragmentShader, vk::PipelineStageFlagBits2::eColorAttachmentOutput,
 		vk::ImageAspectFlagBits::eColor);
 
 	Vulkan::CommandUtils::TransitionImageLayout(
 		command_buffer, _swap_chain_ressources->GetDepthImage(),
 		vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal,
-		vk::AccessFlagBits2::eDepthStencilAttachmentWrite, vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+		vk::AccessFlagBits2::eDepthStencilAttachmentWrite, vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
 		vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests, vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
 		vk::ImageAspectFlagBits::eDepth);
 
 	vk::ClearValue clear_color = vk::ClearColorValue{ 0.0f, 0.0f, 0.0f, 1.0f };
 	vk::ClearValue clear_depth = vk::ClearDepthStencilValue{ 1.0, 0 };
-	vk::RenderingAttachmentInfo attachment_info = {
-		.imageView = _swap_chain_ressources->GetSwapChainImageView(swap_chain_image_index),
+
+	vk::RenderingAttachmentInfo offscreen_attachment_info = {
+		.imageView = _swap_chain_ressources->GetOffScreenImageView(),
 		.imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
 		.loadOp = vk::AttachmentLoadOp::eClear,
 		.storeOp = vk::AttachmentStoreOp::eStore,
 		.clearValue = clear_color
 	};
 
-	vk::RenderingAttachmentInfo depth_attachment_info = {
+	vk::RenderingAttachmentInfo offscreen_depth_attachment_info = {
 		.imageView = _swap_chain_ressources->GetDepthImageView(),
 		.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
 		.loadOp = vk::AttachmentLoadOp::eClear,
@@ -180,15 +220,15 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 		.clearValue = clear_depth
 	};
 
-	vk::RenderingInfo rendering_info = {
+	vk::RenderingInfo offscreen_rendering_info = {
 		.renderArea = { .offset = { 0, 0 }, .extent = _swap_chain_ressources->GetSwapChainExtent() },
 		.layerCount = 1,
 		.colorAttachmentCount = 1,
-		.pColorAttachments = &attachment_info,
-		.pDepthAttachment = &depth_attachment_info
+		.pColorAttachments = &offscreen_attachment_info,
+		.pDepthAttachment = &offscreen_depth_attachment_info
 	};
 
-	command_buffer.beginRendering(rendering_info);
+	command_buffer.beginRendering(offscreen_rendering_info);
 
 	command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *_graphics_pipeline);
 
@@ -202,8 +242,8 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 
 	vk::DescriptorSet obj_descriptor_set = _frame_resources->GetDescriptorSet(current_frame);
 	vk::DescriptorSet light_descriptor_set = _light_descriptor_sets.sets[0];
-	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 0, light_descriptor_set, nullptr);
-	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 1, obj_descriptor_set, nullptr);
+	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _graphics_pipeline_layout, 0, light_descriptor_set, nullptr);
+	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _graphics_pipeline_layout, 1, obj_descriptor_set, nullptr);
 
 	for (const Vulkan::Model& model : _models) {
 		RenderModel(command_buffer, model);
@@ -212,11 +252,59 @@ void Vulkan::Renderer::RecordCommandBuffer(uint32_t current_frame, uint32_t swap
 	command_buffer.endRendering();
 
 	Vulkan::CommandUtils::TransitionImageLayout(
+		command_buffer, _swap_chain_ressources->GetOffScreenImage(),
+		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
+		vk::AccessFlagBits2::eColorAttachmentWrite, vk::AccessFlagBits2::eShaderRead,
+		vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eFragmentShader
+		, vk::ImageAspectFlagBits::eColor);
+
+	CommandUtils::TransitionImageLayout(
+		command_buffer, _swap_chain_ressources->GetSwapChainImage(swap_chain_image_index),
+		vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal,
+		{}, vk::AccessFlagBits2::eColorAttachmentWrite,
+		vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+		vk::ImageAspectFlagBits::eColor);
+
+	vk::RenderingAttachmentInfo tonemap_attachment_info = {
+		.imageView = _swap_chain_ressources->GetSwapChainImageView(swap_chain_image_index),
+		.imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+		.loadOp = vk::AttachmentLoadOp::eDontCare,
+		.storeOp = vk::AttachmentStoreOp::eStore,
+		.clearValue = clear_color
+	};
+
+	vk::RenderingInfo rendering_info = {
+		.renderArea = { .offset = { 0, 0 }, .extent = _swap_chain_ressources->GetSwapChainExtent() },
+		.layerCount = 1,
+		.colorAttachmentCount = 1,
+		.pColorAttachments = &tonemap_attachment_info,
+	};
+
+	command_buffer.beginRendering(rendering_info);
+
+	command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _tonemap_pipeline);
+
+	command_buffer.setViewport(0,
+		vk::Viewport(
+			0.0f, 0.0f,
+			_swap_chain_ressources->GetSwapChainExtent().width, _swap_chain_ressources->GetSwapChainExtent().height,
+			0.0f, 1.0f
+		));
+	command_buffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), _swap_chain_ressources->GetSwapChainExtent()));
+
+	command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _tonemap_pipeline_layout, 0, _swap_chain_ressources->GetTonemapDescriptorSet(), nullptr);
+	float exposure = 0.6f;
+	command_buffer.pushConstants(_tonemap_pipeline_layout, vk::ShaderStageFlagBits::eFragment, 0, sizeof(float), &exposure);
+	command_buffer.draw(3, 1, 0, 0);
+
+	command_buffer.endRendering();
+
+	CommandUtils::TransitionImageLayout(
 		command_buffer, _swap_chain_ressources->GetSwapChainImage(swap_chain_image_index),
 		vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
 		vk::AccessFlagBits2::eColorAttachmentWrite, {},
-		vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eBottomOfPipe
-		, vk::ImageAspectFlagBits::eColor);
+		vk::PipelineStageFlagBits2::eColorAttachmentOutput, vk::PipelineStageFlagBits2::eNone,
+		vk::ImageAspectFlagBits::eColor);
 
 	command_buffer.end();
 }
@@ -245,7 +333,7 @@ void Vulkan::Renderer::RenderNode(vk::raii::CommandBuffer& command_buffer, const
 		};
 
 		command_buffer.pushConstants(
-			_pipeline_layout,
+			_graphics_pipeline_layout,
 			vk::ShaderStageFlagBits::eVertex,
 			0,
 			sizeof(Render::NodeTransformation),
@@ -264,7 +352,7 @@ void Vulkan::Renderer::RenderMesh(vk::raii::CommandBuffer& command_buffer, const
 {
 	for (const auto& primitive : mesh.primitives) {
 		vk::DescriptorSet descriptor_set = primitive.GetMaterialIndex() != -1 ? model.GetMaterialDescriptor(primitive.GetMaterialIndex()) : model.GetDefaultMaterialDescriptor();
-		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 2, descriptor_set, nullptr);
+		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _graphics_pipeline_layout, 2, descriptor_set, nullptr);
 
 		vk::DeviceSize offset = { 0 };
 		command_buffer.bindVertexBuffers(0, primitive.GetVertexBuffer().GetBuffer(), offset);

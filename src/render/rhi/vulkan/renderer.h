@@ -34,6 +34,8 @@ namespace Vulkan {
 
 	public:
 
+		static constexpr vk::Format HDR_FORMAT = vk::Format::eR16G16B16A16Sfloat;
+
 		Renderer(const Vulkan::Context& context);
 		~Renderer();
 
@@ -55,13 +57,18 @@ namespace Vulkan {
 		vk::raii::DescriptorSetLayout _scn_descriptor_set_layout = nullptr;
 		vk::raii::DescriptorSetLayout _obj_descriptor_set_layout = nullptr;
 		vk::raii::DescriptorSetLayout _mat_descriptor_set_layout = nullptr;
-		vk::raii::PipelineLayout _pipeline_layout = nullptr;
+		vk::raii::DescriptorSetLayout _tonemap_descriptor_set_layout = nullptr;
+		vk::raii::PipelineLayout _graphics_pipeline_layout = nullptr;
+		vk::raii::PipelineLayout _tonemap_pipeline_layout = nullptr;
 		vk::raii::Pipeline _graphics_pipeline = nullptr;
+		vk::raii::Pipeline _tonemap_pipeline = nullptr;
 		std::vector<vk::raii::Semaphore> _render_finish_semaphore;
 		std::unique_ptr<SwapChainResources> _swap_chain_ressources;
 		std::unique_ptr<FrameResources> _frame_resources;
 
 		std::vector<Vulkan::Model> _models;
+
+		vk::raii::Sampler _post_process_sampler = nullptr;
 
 		DescriptorSetGroup _light_descriptor_sets;
 		DeviceLocalBuffer _dir_light_buffer;

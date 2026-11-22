@@ -19,4 +19,7 @@ namespace Vulkan {
 		{ 1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment }
 	} };
 
+	constexpr std::array<vk::DescriptorSetLayoutBinding, 1> TONEMAPPING_BINDINGS{ {
+		{ 0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment },
+	} };
 }
