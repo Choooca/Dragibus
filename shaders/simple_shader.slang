@@ -49,6 +49,7 @@ struct VertexOutput {
     float4 position : SV_Position;
     float3 normal;
     float2 texcoord_0;
+    float3x3 TBN;
 };
 
 [[vk::binding(0, 2)]]
@@ -63,13 +64,23 @@ VertexOutput VertMain(VSInput input) {
     output.position = mul(global_transform.proj, mul(global_transform.view, mul(node_transform.model, float4(input.position, 1.0))));
     output.texcoord_0 = input.tex_coord0;
     output.normal = mul(float3x3(node_transform.normal), input.normal);
+
+    float3 T = normalize(mul(node_transform.model, float4(input.tangent.xyz, 0.0)).xyz);
+    float3 B = normalize(mul(node_transform.model, float4(cross(input.normal, input.tangent.xyz) * input.tangent.w, 0.0)).xyz);
+    float3 N = normalize(mul(node_transform.normal, float4(input.normal, 0.0)).xyz);
+    output.TBN = transpose(float3x3(T, B, N));
+
     return output;
 }
 
 [shader("fragment")]
 float4 FragMain(VertexOutput input) : SV_Target
 {
-    float diffuse = max(dot(normalize(input.normal), -directional_light.direction), 0);
+    float3 normal = material_textures[NORMAL].Sample(input.texcoord_0).rgb;
+    normal = normal * 2.0 - 1.0;
+    normal = normalize(mul(input.TBN, normal));
+
+    float diffuse = max(dot(normalize(normal), -directional_light.direction), 0);
     float4 tex_color = material_textures[BASE_COLOR].Sample(input.texcoord_0) * material_ubo.base_color;
     float3 shaded_color = tex_color.rgb * directional_light.color.xyz * (diffuse + ambient);
     return float4(shaded_color, tex_color.a);

@@ -387,6 +387,13 @@ Render::Primitive Render::GLTF::ParsePrimitive(const tg3_primitive& primitive, c
 		}
 	}
 
+	for (auto& vertex : out.vertices) {
+		if (glm::length(glm::vec3(vertex.tangent)) < 1e-12f) {
+			glm::vec3 axis = std::abs(vertex.normal.x) < 0.9 ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
+			vertex.tangent = glm::vec4(glm::normalize(glm::cross(axis, vertex.normal)), 1.0f);
+		}
+	}
+
 	//Material
 	out.material_index = primitive.material;
 
