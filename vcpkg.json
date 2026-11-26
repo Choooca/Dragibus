@@ -6,6 +6,7 @@
     "spdlog",
     "stb",
     "vulkan",
-    "tinygltf"
+    "tinygltf",
+    "meshoptimizer"
   ]
 }

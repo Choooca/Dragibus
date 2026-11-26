@@ -3,6 +3,7 @@
 #include <string>
 #include <stdexcept>
 #include <string_view>
+#include <spdlog/spdlog.h>
 
 namespace details {
     inline std::string_view FileName(std::string_view path) {
@@ -15,3 +16,6 @@ namespace details {
 
 #define THROW_INVALID_ARGUMENT(out) \
     do { throw std::invalid_argument(std::format("INVALID ARGUMENT in {} line {}. {}", details::FileName(__FILE__), __LINE__, out)); } while (0)
+
+#define PRINT_INVALID(fmt, ...) \
+    do { spdlog::warn("Error in {} line {}. " fmt, details::FileName(__FILE__), __LINE__ __VA_OPT__(,) __VA_ARGS__); } while (0)

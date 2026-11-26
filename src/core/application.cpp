@@ -15,7 +15,7 @@
 Application::Application()
 {
 	_scene = std::make_unique<Scene>();
-	_scene->AddModel(Render::GLTF::ParseGLTFModel("ABeautifulGame.glb"));
+	_scene->AddModel(Render::GLTF::ParseGLTFModel("DamagedHelmet.glb"));
 	_window = std::make_unique<Window>();
 	_context = std::make_unique<Vulkan::Context>(_window->GetGLFWWindow());
 	_renderer = std::make_unique<Vulkan::Renderer>(*(_context.get()));

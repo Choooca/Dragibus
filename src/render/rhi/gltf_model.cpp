@@ -9,6 +9,9 @@
 #include <utils/debug_macro.h>
 
 #include <render/primitives.h>
+#include  <render/mesh_utils.h>
+
+#include <third_party/mikktspace_impl.h>
 
 Render::Model Render::GLTF::ParseGLTFModel(const std::string& model_name)
 {
@@ -58,11 +61,6 @@ Render::Model Render::GLTF::ParseGLTFModel(const std::string& model_name)
 		ret.nodes[i] = ParseNode(model.nodes[i]);
  	}
 
-	ret.meshes.resize(model.meshes_count);
-	for (uint32_t i = 0; i < model.meshes_count; ++i) {
-		ret.meshes[i] = ParseMesh(model.meshes[i], model);
-	}
-
 	ret.materials.resize(model.materials_count);
 	for (uint32_t i = 0; i < model.materials_count; ++i) {
 		ret.materials[i] = ParseMaterial(model.materials[i]);
@@ -81,6 +79,11 @@ Render::Model Render::GLTF::ParseGLTFModel(const std::string& model_name)
 	ret.images.resize(model.images_count);
 	for (uint32_t i = 0; i < model.images_count; ++i) {
 		ret.images[i] = ParseImage(model.images[i], model, base_dir);
+	}
+
+	ret.meshes.resize(model.meshes_count);
+	for (uint32_t i = 0; i < model.meshes_count; ++i) {
+		ret.meshes[i] = ParseMesh(model.meshes[i], model);
 	}
 
 	return ret;
@@ -300,6 +303,10 @@ Render::Primitive Render::GLTF::ParsePrimitive(const tg3_primitive& primitive, c
  	}
 	out.vertices.resize(vertice_count);
 
+	bool has_texcoord = false;
+	bool has_tangent = false;
+	bool has_normal = false;
+
 	for (uint32_t i = 0; i < primitive.attributes_count; ++i) {
 		std::string key;
 		key.assign((primitive.attributes + i)->key.data, (primitive.attributes + i)->key.len);
@@ -325,6 +332,7 @@ Render::Primitive Render::GLTF::ParsePrimitive(const tg3_primitive& primitive, c
 
 					out.vertices[j].normal = ParseByte<glm::vec3>(address);
 				}
+				has_normal = true;
 			}
 			else if (key == "TANGENT") {
 				for (uint32_t j = 0; j < accessor.count; ++j) {
@@ -332,6 +340,7 @@ Render::Primitive Render::GLTF::ParsePrimitive(const tg3_primitive& primitive, c
 
 					out.vertices[j].tangent = ParseByte<glm::vec4>(address);
 				}
+				has_tangent = true;
 			}
 			else if (key == "TEXCOORD_0") {
 				for (uint32_t j = 0; j < accessor.count; ++j) {
@@ -351,7 +360,30 @@ Render::Primitive Render::GLTF::ParsePrimitive(const tg3_primitive& primitive, c
 						THROW_INVALID_ARGUMENT("Invalid component type for texcoord0 : " + std::to_string(accessor.component_type));
 					}
 				}
+				has_texcoord = true;
 			}
+		}
+	}
+
+	bool has_normal_map = false;
+
+	if (out.mode == DRAW_MODE::TRIANGLES) {
+		if (!has_normal) {
+			MeshUtils::GenerateFlatNormals(out);
+			has_tangent = false;
+		}
+
+		if (primitive.material >= 0 && primitive.material < model.materials_count) {
+			int32_t normal_map_index = model.materials[primitive.material].normal_texture.index;
+			has_normal_map = normal_map_index >= 0 && normal_map_index < model.textures_count;
+				
+		}
+	}
+
+	if (!has_tangent && has_texcoord && has_normal_map) {
+		CalcTangents calc_tangent{};
+		if (!calc_tangent.Calc(&out)) {
+			PRINT_INVALID("Failed to generate tangent for primitive");
 		}
 	}
 

@@ -4,4 +4,5 @@ target_sources(Dragibus
 	PRIVATE 
 		tiny_gltf_v3_impl.cpp
 		stb_image_impl.cpp
+		mikktspace_impl.cpp
 )

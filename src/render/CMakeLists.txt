@@ -5,4 +5,5 @@ add_subdirectory(rhi)
 target_sources(Dragibus
 	PRIVATE 
 		window.cpp
+		mesh_utils.cpp
 )
