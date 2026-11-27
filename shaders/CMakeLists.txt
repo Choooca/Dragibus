@@ -19,7 +19,9 @@ foreach(shader_source ${SHADER_SLANG_SOURCES})
 			-target spirv -profile spirv_1_4 -emit-spirv-directly
 			-fvk-use-entrypoint-name -entry VertMain -entry FragMain
 			-o ${shader_output}
+			-depfile ${shader_output}.d
 		DEPENDS ${shader_input}
+		DEPFILE ${shader_output}.d
 		COMMENT "Compiling Slang shader ${shader_source}"
 		VERBATIM
 	)

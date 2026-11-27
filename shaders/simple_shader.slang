@@ -1,19 +1,10 @@
+import "lighting/lighting.slang";
+
 struct VSInput {
     float3 position;
     float3 normal;
     float4 tangent;
     float2 tex_coord0;
-};
-
-struct DirectionalLight {
-    float3 direction;
-    float4 color;
-};
-
-struct PointLight {
-    float3 position;
-    float3 color;
-    float intensity;
 };
 
 struct GlobalTransformation {
@@ -41,10 +32,6 @@ static const int OCCLUSION = 3;
 static const int METALLIC_ROUGHNESS = 4;
 static const int MATERIAL_TEXTURE_COUNT = 5;
 
-static const float ambient = 0.2;
-
-static const float specular_strength = 1.0;
-
 [[vk::push_constant]]
 NodeTransformation node_transform;
 
@@ -52,7 +39,7 @@ NodeTransformation node_transform;
 ConstantBuffer<DirectionalLight> directional_light;
 
 [[vk::binding(1, 0)]]
-ConstantBuffer<PointLight> point_light;
+StructuredBuffer<PointLight> point_lights;
 
 [[vk::binding(0, 1)]]
 ConstantBuffer<GlobalTransformation> global_transform;
@@ -87,18 +74,6 @@ VertexOutput VertMain(VSInput input) {
     return output;
 }
 
-float3 BlinnPhong(float3 L, float3 V, float3 N, float3 light_color, float3 albedo, float shininess) {
-    float n_dot_l = dot(N, L);
-
-    if(n_dot_l <= 0.0)
-        return float3(0.0, 0.0, 0.0);
-
-    float3 H = normalize(L + V);
-    float spec = pow(max(dot(N,H), 0.0), shininess) * specular_strength;
-
-    return (albedo * n_dot_l + spec) * light_color;
-}
-
 [shader("fragment")]
 float4 FragMain(VertexOutput input) : SV_Target
 {
@@ -106,22 +81,18 @@ float4 FragMain(VertexOutput input) : SV_Target
     normal = normal * 2.0 - 1.0;
     normal = normalize(mul(input.TBN, normal));
 
-    float4 tex_color = material_textures[BASE_COLOR].Sample(input.texcoord_0) * material_ubo.base_color;
+    float4 albedo = material_textures[BASE_COLOR].Sample(input.texcoord_0) * material_ubo.base_color;
+    float4 mr = material_textures[METALLIC_ROUGHNESS].Sample(input.texcoord_0);
+    float roughness = mr.g * material_ubo.roughness_factor;
+    float metallic = mr.b * material_ubo.metallic_factor;
+    float ao = material_textures[OCCLUSION].Sample(input.texcoord_0).r;
 
-    //Directionnal
     float3 V = normalize(global_transform.view_pos - input.frag_pos);
-    float3 L = -normalize(directional_light.direction);
-    float3 color = BlinnPhong(L, V, normal, directional_light.color.rgb, tex_color.rgb, 32.0);
 
-    //Point
-    L = point_light.position - input.frag_pos;
-    float dist = length(L);
-    float attenuation = point_light.intensity / (dist * dist);
-    color += BlinnPhong(L / dist, V, normal, point_light.color, tex_color.rgb, 32.0) * attenuation;
+    float3 color = 0.0;
 
-    //Ambient
-    color += tex_color.rgb * ambient;
+    color += PBR(directional_light, point_lights, input.frag_pos, V, normal, albedo.rgb, metallic, roughness, ao);
 
-    return float4(color, tex_color.a);
+    return float4(color, albedo.a);
 }
 

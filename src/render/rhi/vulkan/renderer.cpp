@@ -42,7 +42,7 @@
 
 	DirectionalLight dir_light = {
 		.direction = glm::normalize(glm::vec3({ -.2, -.9, -.5 })),
-		.color = glm::vec4(1.0, 1.0, 1.0, 1.0)
+		.color = glm::vec4(5.0, 5.0, 5.0, 1.0)
 	};
 
 	_dir_light_buffer = CreateDeviceLocalBuffer(_context, dir_light, vk::BufferUsageFlagBits::eUniformBuffer);
@@ -55,16 +55,24 @@
 
 	PointLight point_light = {
 		.position = { 1.0, 3.0, 3.0 },
-		.color = { 10.0, 10.0, 0.0 },
+		.color = { 20.0, 10.0, 0.0 },
 		.intensity = 3
 	};
 
-	_point_light_buffer = CreateDeviceLocalBuffer(_context, point_light, vk::BufferUsageFlagBits::eUniformBuffer);
+	PointLight point_light_2 = {
+	.position = { 1.0, 3.0, -3.0 },
+	.color = { 10.0, 20.0, 0.0 },
+	.intensity = 3
+	};
+
+	std::vector<PointLight> point_lights = { point_light, point_light_2 };
+
+	_point_light_buffer = CreateDeviceLocalBuffer(_context, point_lights, vk::BufferUsageFlagBits::eStorageBuffer);
 
 	vk::DescriptorBufferInfo point_light_info = {
 		.buffer = _point_light_buffer.GetBuffer(),
 		.offset = 0,
-		.range = sizeof(PointLight)
+		.range = sizeof(PointLight) * point_lights.size()
 	};
 
 	_light_descriptor_sets = CreateDescriptorSetGroup(_context,
