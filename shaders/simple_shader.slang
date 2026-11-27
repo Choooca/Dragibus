@@ -10,9 +10,16 @@ struct DirectionalLight {
     float4 color;
 };
 
+struct PointLight {
+    float3 position;
+    float3 color;
+    float intensity;
+};
+
 struct GlobalTransformation {
     float4x4 view;
     float4x4 proj;
+    float3 view_pos;
 };
 
 struct NodeTransformation {
@@ -36,11 +43,16 @@ static const int MATERIAL_TEXTURE_COUNT = 5;
 
 static const float ambient = 0.2;
 
+static const float specular_strength = 1.0;
+
 [[vk::push_constant]]
 NodeTransformation node_transform;
 
 [[vk::binding(0, 0)]]
 ConstantBuffer<DirectionalLight> directional_light;
+
+[[vk::binding(1, 0)]]
+ConstantBuffer<PointLight> point_light;
 
 [[vk::binding(0, 1)]]
 ConstantBuffer<GlobalTransformation> global_transform;
@@ -50,6 +62,7 @@ struct VertexOutput {
     float3 normal;
     float2 texcoord_0;
     float3x3 TBN;
+    float3 frag_pos;
 };
 
 [[vk::binding(0, 2)]]
@@ -64,6 +77,7 @@ VertexOutput VertMain(VSInput input) {
     output.position = mul(global_transform.proj, mul(global_transform.view, mul(node_transform.model, float4(input.position, 1.0))));
     output.texcoord_0 = input.tex_coord0;
     output.normal = mul(float3x3(node_transform.normal), input.normal);
+    output.frag_pos = mul(node_transform.model, float4(input.position, 1.0)).xyz;
 
     float3 T = normalize(mul(node_transform.model, float4(input.tangent.xyz, 0.0)).xyz);
     float3 B = normalize(mul(node_transform.model, float4(cross(input.normal, input.tangent.xyz) * input.tangent.w, 0.0)).xyz);
@@ -80,8 +94,17 @@ float4 FragMain(VertexOutput input) : SV_Target
     normal = normal * 2.0 - 1.0;
     normal = normalize(mul(input.TBN, normal));
 
-    float diffuse = max(dot(normalize(normal), -directional_light.direction), 0);
+    float3 light_dir = normalize(directional_light.direction);
+
+    float diffuse = max(dot(normalize(normal), -light_dir), 0);
+
+    float3 view_dir = normalize(global_transform.view_pos - input.frag_pos);
+    float3 reflect_dir = reflect(light_dir, normal);
+    float spec_factor = diffuse > 0.0 ? pow(max(dot(reflect_dir, view_dir), 0.0), 32) : 0;
+    float3 specular = specular_strength * spec_factor * float3(1.0, 1.0, 1.0);
+
     float4 tex_color = material_textures[BASE_COLOR].Sample(input.texcoord_0) * material_ubo.base_color;
-    float3 shaded_color = tex_color.rgb * directional_light.color.xyz * (diffuse + ambient);
+    float3 shaded_color = tex_color.rgb * directional_light.color.xyz * (diffuse + ambient) + specular * directional_light.color.xyz;
+
     return float4(shaded_color, tex_color.a);
 }

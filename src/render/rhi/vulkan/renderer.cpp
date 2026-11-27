@@ -53,12 +53,27 @@
 		.range = sizeof(DirectionalLight)
 	};
 
-	_light_descriptor_sets = CreateDescriptorSetGroup(_context, 
+	PointLight point_light = {
+		.position = { 5.0, 5.0, -3.0 },
+		.color = { 1.0, 1.0, 0.0 },
+		.intensity = 3
+	};
+
+	_point_light_buffer = CreateDeviceLocalBuffer(_context, point_light, vk::BufferUsageFlagBits::eUniformBuffer);
+
+	vk::DescriptorBufferInfo point_light_info = {
+		.buffer = _point_light_buffer.GetBuffer(),
+		.offset = 0,
+		.range = sizeof(PointLight)
+	};
+
+	_light_descriptor_sets = CreateDescriptorSetGroup(_context,
 		{
 			.descriptor_set_layout = _scn_descriptor_set_layout,
 			.bindings = SCN_BINDINGS,
 			.resources = { { {
-					std::vector{ dir_light_info }
+					std::vector{ dir_light_info },
+					std::vector{ point_light_info }
 			} } }
 		}
 	);
@@ -171,6 +186,7 @@ void Vulkan::Renderer::UpdateUniformBuffer(uint32_t current_frame, Camera* camer
 	Render::GlobalTransformation global_transform{};
 	global_transform.view = glm::lookAt(camera->GetPosition(), camera->GetPosition() + camera->GetForward(), glm::vec3(0, 1, 0));
 	global_transform.perspective = glm::perspective(glm::radians(45.0f), _swap_chain_ressources->GetSwapChainExtent().width / (float)_swap_chain_ressources->GetSwapChainExtent().height, 0.001f, 1000.0f);
+	global_transform.view_pos = camera->GetPosition();
 
 	memcpy(_frame_resources->GetUniformBufferMappedMemory(current_frame), &global_transform, sizeof(Render::GlobalTransformation));
 }

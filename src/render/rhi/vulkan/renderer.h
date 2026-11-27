@@ -30,6 +30,13 @@ namespace Vulkan {
 		alignas(16) glm::vec4 color;
 	};
 
+	struct PointLight {
+		alignas(16) glm::vec3 position;
+		alignas(16) glm::vec3 color;
+		alignas(4) float intensity;
+	};
+
+
 	class Renderer {
 
 	public:
@@ -71,6 +78,7 @@ namespace Vulkan {
 
 		DescriptorSetGroup _light_descriptor_sets;
 		DeviceLocalBuffer _dir_light_buffer;
+		DeviceLocalBuffer _point_light_buffer;
 
 		void RecreateSwapChainResources();
 		static void FramebufferResizedCallback(GLFWwindow* window, int width, int height);
