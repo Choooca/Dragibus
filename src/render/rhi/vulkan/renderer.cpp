@@ -42,7 +42,7 @@
 
 	DirectionalLight dir_light = {
 		.direction = glm::normalize(glm::vec3({ -.2, -.9, -.5 })),
-		.color = glm::vec4(10.0, 10.0, 10.0, 1.0)
+		.color = glm::vec4(1.0, 1.0, 1.0, 1.0)
 	};
 
 	_dir_light_buffer = CreateDeviceLocalBuffer(_context, dir_light, vk::BufferUsageFlagBits::eUniformBuffer);
@@ -54,8 +54,8 @@
 	};
 
 	PointLight point_light = {
-		.position = { 5.0, 5.0, -3.0 },
-		.color = { 1.0, 1.0, 0.0 },
+		.position = { 1.0, 3.0, 3.0 },
+		.color = { 10.0, 10.0, 0.0 },
 		.intensity = 3
 	};
 

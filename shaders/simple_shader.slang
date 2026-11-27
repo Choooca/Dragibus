@@ -87,6 +87,18 @@ VertexOutput VertMain(VSInput input) {
     return output;
 }
 
+float3 BlinnPhong(float3 L, float3 V, float3 N, float3 light_color, float3 albedo, float shininess) {
+    float n_dot_l = dot(N, L);
+
+    if(n_dot_l <= 0.0)
+        return float3(0.0, 0.0, 0.0);
+
+    float3 H = normalize(L + V);
+    float spec = pow(max(dot(N,H), 0.0), shininess) * specular_strength;
+
+    return (albedo * n_dot_l + spec) * light_color;
+}
+
 [shader("fragment")]
 float4 FragMain(VertexOutput input) : SV_Target
 {
@@ -94,17 +106,22 @@ float4 FragMain(VertexOutput input) : SV_Target
     normal = normal * 2.0 - 1.0;
     normal = normalize(mul(input.TBN, normal));
 
-    float3 light_dir = normalize(directional_light.direction);
-
-    float diffuse = max(dot(normalize(normal), -light_dir), 0);
-
-    float3 view_dir = normalize(global_transform.view_pos - input.frag_pos);
-    float3 reflect_dir = reflect(light_dir, normal);
-    float spec_factor = diffuse > 0.0 ? pow(max(dot(reflect_dir, view_dir), 0.0), 32) : 0;
-    float3 specular = specular_strength * spec_factor * float3(1.0, 1.0, 1.0);
-
     float4 tex_color = material_textures[BASE_COLOR].Sample(input.texcoord_0) * material_ubo.base_color;
-    float3 shaded_color = tex_color.rgb * directional_light.color.xyz * (diffuse + ambient) + specular * directional_light.color.xyz;
 
-    return float4(shaded_color, tex_color.a);
+    //Directionnal
+    float3 V = normalize(global_transform.view_pos - input.frag_pos);
+    float3 L = -normalize(directional_light.direction);
+    float3 color = BlinnPhong(L, V, normal, directional_light.color.rgb, tex_color.rgb, 32.0);
+
+    //Point
+    L = point_light.position - input.frag_pos;
+    float dist = length(L);
+    float attenuation = point_light.intensity / (dist * dist);
+    color += BlinnPhong(L / dist, V, normal, point_light.color, tex_color.rgb, 32.0) * attenuation;
+
+    //Ambient
+    color += tex_color.rgb * ambient;
+
+    return float4(color, tex_color.a);
 }
+
